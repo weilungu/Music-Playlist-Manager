@@ -106,9 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            if (!currentNode) {
-                currentNode = playlistList.head; // 從第一首開始
-            }
+            // 每次播放都從第一首開始
+            currentNode = playlistList.head;
             
             isPlaying = true;
             playButton.textContent = '停止';
