@@ -15,9 +15,14 @@
         <div id="card-header" class="card-header">
             <div class="sort-menu">
                 <span class="menu-label">排列：</span>
-                <button class="menu-item" type="button">時間 <i class="fa-solid fa-arrow-up"></i></button>
-                <button class="menu-item" type="button">歌曲 <i class="fa-solid fa-arrow-down"></i></button>
-                <button class="menu-item" type="button">歌手 <i class="fa-solid fa-arrow-up"></i></button>
+                <select id="sort-select" class="sort-select">
+                    <option value="time">時間</option>
+                    <option value="title">歌曲</option>
+                    <option value="artist">歌手</option>
+                </select>
+                <button id="sort-direction-btn" class="sort-direction-btn" type="button" title="切換排序方向">
+                    <i class="fa-solid fa-arrow-up"></i>
+                </button>
             </div>
             <div class="header-search">
                 <input type="text" id="search-input" placeholder="搜尋歌曲...">

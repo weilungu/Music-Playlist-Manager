@@ -23,6 +23,7 @@ const bst = new BinarySearchTree();
 
 let isPlaying = false;
 let currentNode = null; // 目前播放的 DoublyLinkedList 節點
+let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
 
 document.addEventListener('DOMContentLoaded', () => {
     // 初始化一些範例歌曲到資料結構
@@ -50,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentNode = playlistList.head;
             }
             updatePlaylistDisplay();
+            updateButtonStates();
             
             // 清空輸入欄位
             document.getElementById('song-name-input').value = '';
@@ -174,6 +176,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 排序方向切換按鈕
+    const sortDirectionBtn = document.getElementById('sort-direction-btn');
+    if (sortDirectionBtn) {
+        sortDirectionBtn.addEventListener('click', () => {
+            // 切換方向
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            
+            // 更新箭頭圖示
+            const icon = sortDirectionBtn.querySelector('i');
+            if (sortDirection === 'asc') {
+                icon.className = 'fa-solid fa-arrow-up';
+            } else {
+                icon.className = 'fa-solid fa-arrow-down';
+            }
+        });
+    }
+
     // 排序（依標題）- O(n) BST 中序遍歷
     const sortBtn = document.getElementById('sort-btn');
     if (sortBtn) {
@@ -190,7 +209,16 @@ document.addEventListener('DOMContentLoaded', () => {
 function updateButtonStates() {
     const prevButton = document.getElementById('prev');
     const nextButton = document.getElementById('next');
+    const playButton = document.getElementById('play');
     
+    // 播放清單為空時，播放按鈕不可按
+    if (!playlistList.head) {
+        playButton.disabled = true;
+    } else {
+        playButton.disabled = false;
+    }
+    
+    // 上一首和下一首按鈕只有在播放時才可按
     if (isPlaying) {
         prevButton.disabled = false;
         nextButton.disabled = false;
@@ -288,6 +316,7 @@ document.addEventListener('click', (e) => {
             filterQueue(nextQueue, s => s.title !== title);
             filterQueue(prevQueue, s => s.title !== title);
             updatePlaylistDisplay();
+            updateButtonStates();
         }
     }
 });

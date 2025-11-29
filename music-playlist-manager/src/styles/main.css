@@ -30,6 +30,35 @@ h1 {
     font-weight: 600;
 }
 
+.sort-select {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #35424a;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.sort-direction-btn {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #35424a;
+    border-radius: 6px;
+    cursor: pointer;
+    min-width: 36px;
+    transition: transform 0.3s ease;
+}
+
+.sort-direction-btn:hover {
+    background: #f0f0f0;
+}
+
+.sort-direction-btn i {
+    color: #35424a;
+}
+
 .menu-item {
     padding: 6px 10px;
     border: 1px solid #ccc;
