@@ -13,6 +13,8 @@ class DoublyLinkedList {
         this.size = 0;
     }
 
+    // ---基本操作---
+
     add(data) {
         const newNode = new Node(data);
         if (!this.head) {
@@ -64,7 +66,6 @@ class DoublyLinkedList {
         }
     }
 
-    // ✅ 改進：提供 removeNode(node) 方法
     removeNode(node) {
         // 如果有節點引用，刪除是 O(1)
         if (node.prev) {
@@ -77,6 +78,11 @@ class DoublyLinkedList {
             node.next.prev = node.prev;
         } else {
             this.tail = node.prev;
+        }
+
+        // 如果刪除的是當前播放節點
+        if (this.current === node) {
+            this.current = node.next || this.head;
         }
         
         this.size--;
@@ -104,6 +110,42 @@ class DoublyLinkedList {
 
     getSize() {
         return this.size;
+    }
+
+    // ---播放相關操作---
+    moveNext() {
+        if (!this.current) {
+            this.current = this.head;
+        } else {
+            this.current = this.current.next || this.head; // 循環播放
+        }
+        return this.current ? this.current.data : null;
+    }
+
+    movePrev() {
+        if (!this.current) {
+            this.current = this.tail;
+        } else {
+            this.current = this.current.prev || this.tail; // 循環播放
+        }
+        return this.current ? this.current.data : null;
+    }
+
+    // ---轉換成 Array---
+
+    toArray() {
+        const arr = [];
+        let current = this.head;
+        while (current) {
+            arr.push(current.data);
+            current = current.next;
+        }
+        return arr;
+    }
+
+    fromArray(arr) {
+        this.clear();
+        arr.forEach(data => this.append(data));
     }
 }
 
