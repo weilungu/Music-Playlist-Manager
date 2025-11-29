@@ -24,6 +24,11 @@ class Queue {
         return this.items[0];
     }
 
+    // 查看隊首元素但不移除
+    peek() {
+        return this.front();
+    }
+
     // Check if the queue is empty
     isEmpty() {
         return this.items.length === 0;
@@ -32,6 +37,16 @@ class Queue {
     // Return the size of the queue
     size() {
         return this.items.length;
+    }
+
+    // 回傳隊列長度
+    getSize() {
+        return this.size();
+    }
+
+    // 轉為陣列（用於顯示待播清單）
+    toArray() {
+        return [...this.items];
     }
 
     // Clear the queue
