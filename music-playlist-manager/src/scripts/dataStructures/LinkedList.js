@@ -64,6 +64,24 @@ class DoublyLinkedList {
         }
     }
 
+    // ✅ 改進：提供 removeNode(node) 方法
+    removeNode(node) {
+        // 如果有節點引用，刪除是 O(1)
+        if (node.prev) {
+            node.prev.next = node.next;
+        } else {
+            this.head = node.next;
+        }
+        
+        if (node.next) {
+            node.next.prev = node.prev;
+        } else {
+            this.tail = node.prev;
+        }
+        
+        this.size--;
+}
+
     traverse() {
         const elements = [];
         let current = this.head;
