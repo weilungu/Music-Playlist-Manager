@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addSongToStructures(song);
     });
     updatePlaylistDisplay();
+    updateButtonStates();
     
     // 新增歌曲按鈕事件 - O(1) hashtable insert + O(log n) BST insert
     document.getElementById('add-song-btn').addEventListener('click', () => {
@@ -120,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         updatePlaylistDisplay();
+        updateButtonStates();
     });
     
     // 上一首按鈕 - O(1) 使用雙向鏈結的 prev 指標
@@ -184,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         updatePlaylistDisplay();
+        updateButtonStates();
     });
     
     // 搜尋按鈕 - O(1) hashtable 查歌名 + O(n) 過濾歌手
@@ -217,6 +220,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// 更新按鈕狀態 - O(1)
+function updateButtonStates() {
+    const prevButton = document.getElementById('prev');
+    const nextButton = document.getElementById('next');
+    
+    if (isPlaying) {
+        prevButton.disabled = false;
+        nextButton.disabled = false;
+    } else {
+        prevButton.disabled = true;
+        nextButton.disabled = true;
+    }
+}
 
 // 更新播放清單顯示 - O(n) 遍歷與 DOM 操作
 // 未來優化方向：虛擬滾動、DOM diff、只更新變化的項目
