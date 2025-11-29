@@ -2,88 +2,19 @@ class Node {
     constructor(data) {
         this.data = data;
         this.next = null;
+        this.prev = null;
     }
 }
 
-class LinkedList {
+class DoublyLinkedList {
     constructor() {
         this.head = null;
+        this.tail = null;
         this.size = 0;
     }
 
     add(data) {
         const newNode = new Node(data);
-        if (!this.head) {
-            this.head = newNode;
-        } else {
-            let current = this.head;
-            while (current.next) {
-                current = current.next;
-            }
-            current.next = newNode;
-        }
-        this.size++;
-    }
-
-    remove(data) {
-        if (!this.head) return;
-
-        if (this.head.data === data) {
-            this.head = this.head.next;
-            this.size--;
-            return;
-        }
-
-        let current = this.head;
-        while (current.next) {
-            if (current.next.data === data) {
-                current.next = current.next.next;
-                this.size--;
-                return;
-            }
-            current = current.next;
-        }
-    }
-
-    traverse() {
-        const elements = [];
-        let current = this.head;
-        while (current) {
-            elements.push(current.data);
-            current = current.next;
-        }
-        return elements;
-    }
-
-    getSize() {
-        return this.size;
-    }
-}
-
-class SinglyLinkedList extends LinkedList {
-    constructor() {
-        super();
-    }
-
-    // Additional methods specific to singly linked list can be added here
-}
-
-class DoublyNode {
-    constructor(data) {
-        this.data = data;
-        this.next = null;
-        this.prev = null;
-    }
-}
-
-class DoublyLinkedList extends SinglyLinkedList {
-    constructor() {
-        super();
-        this.tail = null;
-    }
-
-    add(data) {
-        const newNode = new DoublyNode(data);
         if (!this.head) {
             this.head = newNode;
             this.tail = newNode;
@@ -158,4 +89,4 @@ class DoublyLinkedList extends SinglyLinkedList {
     }
 }
 
-export { SinglyLinkedList, DoublyLinkedList };
+export default DoublyLinkedList;
