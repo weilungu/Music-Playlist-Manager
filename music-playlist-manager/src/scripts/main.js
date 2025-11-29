@@ -59,41 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // 刪除歌曲按鈕事件 - O(1) hashtable + node lookup, O(log n) BST delete
-    document.getElementById('remove-song-btn').addEventListener('click', () => {
-        const songName = document.getElementById('song-name-input').value.trim();
-        
-        if (songName) {
-            const song = songTable[songName];
-            const node = nodeTable[songName];
-            if (song && node) {
-                // 調整目前播放節點（刪除前處理）
-                if (currentNode === node) {
-                    currentNode = currentNode.next || currentNode.prev || null;
-                }
-                
-                // O(1) 從 DoublyLinkedList 刪除節點
-                playlistList.removeNode(node);
-                // O(log n) 從 BST 移除
-                bst.delete(songName);
-                // O(1) 從 hashtable 移除
-                delete songTable[songName];
-                delete nodeTable[songName];
-                
-                // 清理 queue (保留，但實際上 prev/next 已不依賴它)
-                filterQueue(nextQueue, s => s.title !== songName);
-                filterQueue(prevQueue, s => s.title !== songName);
-
-                updatePlaylistDisplay();
-                document.getElementById('song-name-input').value = '';
-                document.getElementById('artist-name-input').value = '';
-            } else {
-                alert('找不到該歌曲');
-            }
-        } else {
-            alert('請輸入要刪除的歌曲名稱');
-        }
-    });
+    // 移除「刪除歌曲」按鈕事件，改為在歌曲項目上顯示垃圾桶 icon 來刪除
     
     // 播放/停止按鈕 - O(1) 狀態切換
     document.getElementById('play').addEventListener('click', () => {
@@ -248,12 +214,22 @@ function updatePlaylistDisplay() {
     // O(n) DOM 操作
     arr.forEach((song, index) => {
         const li = document.createElement('li');
-        li.textContent = `${index + 1}. ${song.title} - ${song.artist}`;
+        const label = document.createElement('span');
+        label.textContent = `${index + 1}. ${song.title} - ${song.artist}`;
+
+        // 建立垃圾桶 icon（hover 顯示）
+        const trash = document.createElement('i');
+        trash.className = 'fa-solid fa-trash song-delete';
+        trash.title = '刪除';
+        trash.dataset.title = song.title;
+
         // O(1) 比對當前播放歌曲
         if (isPlaying && currentNode && currentNode.data && currentNode.data.title === song.title) {
             li.classList.add('now-playing');
         }
-        
+
+        li.appendChild(label);
+        li.appendChild(trash);
         songList.appendChild(li);
     });
 }
@@ -269,10 +245,17 @@ function renderList(list, currentSong) {
     // O(n) 渲染排序後的清單
     list.forEach((song, index) => {
         const li = document.createElement('li');
-        li.textContent = `${index + 1}. ${song.title} - ${song.artist}`;
+        const label = document.createElement('span');
+        label.textContent = `${index + 1}. ${song.title} - ${song.artist}`;
+        const trash = document.createElement('i');
+        trash.className = 'fa-solid fa-trash song-delete';
+        trash.title = '刪除';
+        trash.dataset.title = song.title;
         if (isPlaying && currentSong && currentSong.title === song.title) {
             li.classList.add('now-playing');
         }
+        li.appendChild(label);
+        li.appendChild(trash);
         songList.appendChild(li);
     });
 }
@@ -287,6 +270,27 @@ function addSongToStructures(song) {
 }
 
 // 過濾 queue 的 items（簡單重建）- O(n) 重建 queue- O(n) 重建 queue
+// 事件委派：處理垃圾桶 icon 的點擊刪除
+document.addEventListener('click', (e) => {
+    const target = e.target;
+    if (target && target.classList && target.classList.contains('song-delete')) {
+        const title = target.dataset.title;
+        const song = songTable[title];
+        const node = nodeTable[title];
+        if (song && node) {
+            if (currentNode === node) {
+                currentNode = currentNode.next || currentNode.prev || null;
+            }
+            playlistList.removeNode(node);
+            bst.delete(title);
+            delete songTable[title];
+            delete nodeTable[title];
+            filterQueue(nextQueue, s => s.title !== title);
+            filterQueue(prevQueue, s => s.title !== title);
+            updatePlaylistDisplay();
+        }
+    }
+});
 // 注意：實際上 prev/next 已改用雙向指標，此函數較少使用
 function filterQueue(queue, predicate) {
     const items = queue.toArray(); // O(n)

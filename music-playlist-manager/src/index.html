@@ -5,10 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>音樂播放清單管理器</title>
     <link rel="stylesheet" href="styles/main.css">
+    <!-- Font Awesome for icons -->
+    <!-- Use CDNJS without SRI to avoid blocked loads during dev -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
     <div id="app">
         <h1>音樂播放清單管理器</h1>
+        <div id="card-header" class="card-header">
+            <div class="sort-menu">
+                <span class="menu-label">排列：</span>
+                <button class="menu-item" type="button">時間 <i class="fa-solid fa-arrow-up"></i></button>
+                <button class="menu-item" type="button">歌曲 <i class="fa-solid fa-arrow-down"></i></button>
+                <button class="menu-item" type="button">歌手 <i class="fa-solid fa-arrow-up"></i></button>
+            </div>
+            <div class="header-search">
+                <input type="text" id="search-input" placeholder="搜尋歌曲...">
+                <button id="search-btn" type="button">搜尋</button>
+            </div>
+        </div>
         
         <div id="song-management">
             <h2>歌曲管理</h2>
@@ -16,7 +31,6 @@
                 <input type="text" id="song-name-input" placeholder="歌曲名稱">
                 <input type="text" id="artist-name-input" placeholder="歌手名稱">
                 <button id="add-song-btn">新增歌曲</button>
-                <button id="remove-song-btn">刪除歌曲</button>
             </div>
         </div>
         
@@ -30,10 +44,7 @@
             <button id="next">下一首</button>
             <button id="random">隨機播放</button>
         </div>
-        <div id="search">
-            <input type="text" id="search-input" placeholder="搜尋歌曲...">
-            <button id="search-btn">搜尋</button>
-        </div>
+        
     </div>
     <script type="module" src="scripts/main.js"></script>
 </body>

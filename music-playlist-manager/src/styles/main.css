@@ -7,6 +7,63 @@ body {
 
 #app {
     max-width: 800px;
+h1 {
+    margin-bottom: 12px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.sort-menu {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.menu-label {
+    color: #35424a;
+    font-weight: 600;
+}
+
+.menu-item {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #35424a;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.menu-item i {
+    margin-left: 6px;
+    color: #7f8c8d;
+}
+
+.header-search {
+    display: flex;
+    gap: 10px;
+}
+
+.header-search input {
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.header-search button {
+    padding: 8px 14px;
+    background: #35424a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
     margin: 0 auto;
     background: white;
     padding: 20px;
@@ -79,13 +136,35 @@ h2 {
 #song-list li {
     background: #f8f9fa;
     margin: 8px 0;
-    padding: 12px 15px;
+    padding: 12px 44px 12px 15px; /* 留出右方 icon 空間 */
     border-radius: 5px;
     border-left: 4px solid #35424a;
+    position: relative;
 }
 
 #song-list li:hover {
     background: #e9ecef;
+}
+
+/* 垃圾桶 icon：預設隱藏，hover 顯示 */
+.song-delete {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #000000; /* 黑色圖示 */
+    cursor: pointer;
+    display: none;
+    font-size: 16px;
+    z-index: 1;
+}
+
+#song-list li:hover .song-delete {
+    display: inline-block;
+}
+
+.song-delete:hover {
+    color: #000000; /* 保持黑色 */
 }
 
 #controls {
