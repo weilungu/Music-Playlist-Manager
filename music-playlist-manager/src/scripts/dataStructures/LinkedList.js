@@ -26,6 +26,20 @@ class DoublyLinkedList {
             this.tail = newNode;
         }
         this.size++;
+        return newNode; // 回傳節點方便外部引用
+    }
+
+    // append 為 add 的別名，供 fromArray 使用
+    append(data) {
+        return this.add(data);
+    }
+
+    // 清空串列
+    clear() {
+        this.head = null;
+        this.tail = null;
+        this.size = 0;
+        this.current = null;
     }
 
     remove(data) {

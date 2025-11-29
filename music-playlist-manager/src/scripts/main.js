@@ -50,7 +50,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentNode) {
                 currentNode = playlistList.head;
             }
-            updatePlaylistDisplay();
+            // 依目前排序指標與方向，立即重建底層順序
+            const select = document.getElementById('sort-select');
+            if (select) {
+                const field = select.value; // 'time' | 'title' | 'artist'
+                reorderUnderlyingList(field, sortDirection);
+            } else {
+                updatePlaylistDisplay();
+            }
             updateButtonStates();
             
             // 清空輸入欄位
@@ -290,11 +297,14 @@ function renderList(list, currentSong) {
 
 // 加入歌曲到各資料結構 - O(1) add to list tail + O(1) hashtable + O(log n) BST
 function addSongToStructures(song) {
-    playlistList.add(song); // O(1) 加到尾端
-    const newNode = playlistList.tail; // O(1) 取得剛加入的節點
+    // 設定加入時間戳（毫秒）供排序使用
+    if (!song.addedAt) {
+        song.addedAt = Date.now();
+    }
+    const node = playlistList.add(song); // O(1) 加到尾端暫存，稍後重排
     songTable[song.title] = song; // O(1) hashtable 存歌曲
-    nodeTable[song.title] = newNode; // O(1) 存節點引用，避免後續 O(n) 查找
-    bst.insert(song); // O(log n) BST 插入（平均情況）
+    nodeTable[song.title] = node; // O(1) 存節點引用
+    bst.insert(song); // 仍以標題插入 BST 做搜尋 / 顯示用
 }
 
 // 過濾 queue 的 items（簡單重建）- O(n) 重建 queue- O(n) 重建 queue
@@ -327,4 +337,75 @@ function filterQueue(queue, predicate) {
     items.forEach(item => {
         if (predicate(item)) queue.enqueue(item); // O(1) per item
     });
+}
+
+// 依下拉式選單與方向進行排序並渲染
+function renderSortedBySelection() {
+    const select = document.getElementById('sort-select');
+    if (!select) return;
+    const field = select.value; // 'time' | 'title' | 'artist'
+    reorderUnderlyingList(field, sortDirection);
+}
+
+// 綁定下拉選單變更與方向按鈕點擊以重新渲染排序
+document.addEventListener('DOMContentLoaded', () => {
+    const select = document.getElementById('sort-select');
+    if (select) {
+        select.addEventListener('change', () => {
+            renderSortedBySelection();
+        });
+    }
+    const sortDirectionBtn = document.getElementById('sort-direction-btn');
+    if (sortDirectionBtn) {
+        sortDirectionBtn.addEventListener('click', () => {
+            renderSortedBySelection();
+        });
+    }
+});
+
+// 重新依指定欄位與方向重建底層串列順序
+function reorderUnderlyingList(field, direction) {
+    const arr = playlistList.toArray();
+    if (!arr || arr.length === 0) {
+        updatePlaylistDisplay();
+        return;
+    }
+    const currentTitle = currentNode && currentNode.data && currentNode.data.title;
+    // 產生排序 key
+    const keyFn = (s) => {
+        if (field === 'time') return Number(s.addedAt || 0);
+        if (field === 'title') return (s.title || '').trim().toLowerCase().charAt(0);
+        if (field === 'artist') return (s.artist || '').trim().toLowerCase();
+        return (s.title || '').trim().toLowerCase();
+    };
+    arr.sort((a, b) => {
+        const ka = keyFn(a);
+        const kb = keyFn(b);
+        if (ka < kb) return -1;
+        if (ka > kb) return 1;
+        // 次要比較保持穩定：用完整標題
+        const ta = (a.title || '').toLowerCase();
+        const tb = (b.title || '').toLowerCase();
+        if (ta < tb) return -1;
+        if (ta > tb) return 1;
+        return 0;
+    });
+    if (direction === 'desc') arr.reverse();
+
+    // 清空並重建串列與節點對照
+    playlistList.clear();
+    Object.keys(nodeTable).forEach(k => delete nodeTable[k]);
+    currentNode = null;
+    arr.forEach(song => {
+        const node = playlistList.add(song);
+        nodeTable[song.title] = node;
+        if (currentTitle && song.title === currentTitle) {
+            currentNode = node;
+        }
+    });
+    // 若原播放節點不存在則重置
+    if (!currentNode && isPlaying) {
+        currentNode = playlistList.head;
+    }
+    updatePlaylistDisplay();
 }

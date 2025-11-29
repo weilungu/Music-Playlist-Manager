@@ -7,8 +7,14 @@ class TreeNode {
 }
 
 class BinarySearchTree {
-    constructor() {
+    constructor(keySelector) {
         this.root = null;
+        // keySelector: function(song) -> comparable key
+        this.keySelector = keySelector || (s => (s.title || ''));
+    }
+
+    getKey(song) {
+        return this.keySelector ? this.keySelector(song) : (song.title || '');
     }
 
     insert(song) {
@@ -21,7 +27,9 @@ class BinarySearchTree {
     }
 
     insertNode(node, newNode) {
-        if (newNode.song.title < node.song.title) {
+        const newKey = this.getKey(newNode.song);
+        const nodeKey = this.getKey(node.song);
+        if (newKey < nodeKey) {
             if (!node.left) {
                 node.left = newNode;
             } else {
@@ -36,19 +44,20 @@ class BinarySearchTree {
         }
     }
 
-    delete(songTitle) {
-        this.root = this.deleteNode(this.root, songTitle);
+    delete(keyValue) {
+        this.root = this.deleteNode(this.root, keyValue);
     }
 
-    deleteNode(node, songTitle) {
+    deleteNode(node, keyValue) {
         if (!node) {
             return null;
         }
-        if (songTitle < node.song.title) {
-            node.left = this.deleteNode(node.left, songTitle);
+        const nodeKey = this.getKey(node.song);
+        if (keyValue < nodeKey) {
+            node.left = this.deleteNode(node.left, keyValue);
             return node;
-        } else if (songTitle > node.song.title) {
-            node.right = this.deleteNode(node.right, songTitle);
+        } else if (keyValue > nodeKey) {
+            node.right = this.deleteNode(node.right, keyValue);
             return node;
         } else {
             if (!node.left && !node.right) {
@@ -62,7 +71,8 @@ class BinarySearchTree {
             }
             const tempNode = this.findMinNode(node.right);
             node.song = tempNode.song;
-            node.right = this.deleteNode(node.right, tempNode.song.title);
+            const tempKey = this.getKey(tempNode.song);
+            node.right = this.deleteNode(node.right, tempKey);
             return node;
         }
     }
@@ -74,18 +84,19 @@ class BinarySearchTree {
         return node;
     }
 
-    search(songTitle) {
-        return this.searchNode(this.root, songTitle);
+    search(keyValue) {
+        return this.searchNode(this.root, keyValue);
     }
 
-    searchNode(node, songTitle) {
+    searchNode(node, keyValue) {
         if (!node) {
             return null;
         }
-        if (songTitle < node.song.title) {
-            return this.searchNode(node.left, songTitle);
-        } else if (songTitle > node.song.title) {
-            return this.searchNode(node.right, songTitle);
+        const nodeKey = this.getKey(node.song);
+        if (keyValue < nodeKey) {
+            return this.searchNode(node.left, keyValue);
+        } else if (keyValue > nodeKey) {
+            return this.searchNode(node.right, keyValue);
         } else {
             return node.song;
         }
