@@ -111,6 +111,18 @@ class DoublyLinkedList {
     getSize() {
         return this.size;
     }
+    
+    shuffle() {
+        if (!this.head) return null;
+        const nodes = [];
+        let current = this.head;
+        while (current) {
+            nodes.push(current);
+            current = current.next;
+        }
+        const randomIndex = Math.floor(Math.random() * nodes.length);
+        return nodes[randomIndex];
+    }
 
     // ---播放相關操作---
     moveNext() {
