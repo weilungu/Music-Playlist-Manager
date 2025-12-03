@@ -23,6 +23,7 @@ const bst = new BinarySearchTree();
 
 let isPlaying = false;
 let currentNode = null; // 目前播放的 DoublyLinkedList 節點
+let selectedNode = null; // 被選取的歌曲節點
 let isSearchMode = false; // 是否處於搜尋模式
 let searchResults = []; // 搜尋結果快取
 let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
@@ -83,8 +84,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // 每次播放都從第一首開始
-            currentNode = playlistList.head;
+            // 如果有選取的歌曲，從選取的歌曲開始播放
+            if (selectedNode) {
+                currentNode = selectedNode;
+                selectedNode = null; // 播放後清除選取狀態
+            } else {
+                // 沒有選取時，總是從第一首開始播放
+                currentNode = playlistList.head;
+            }
             
             isPlaying = true;
             playButton.textContent = '停止';
@@ -92,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // 停止播放
             isPlaying = false;
+            currentNode = null; // 停止時清除當前節點，下次從頭開始
             playButton.textContent = '播放';
             playButton.classList.remove('playing');
         }
@@ -276,6 +284,8 @@ function updatePlaylistDisplay() {
     // O(n) DOM 操作
     arr.forEach((song, index) => {
         const li = document.createElement('li');
+        li.style.cursor = 'pointer'; // 整個 li 可點擊
+        
         const label = document.createElement('span');
         label.textContent = `${index + 1}. ${song.title} - ${song.artist}`;
 
@@ -289,6 +299,20 @@ function updatePlaylistDisplay() {
         if (isPlaying && currentNode && currentNode.data && currentNode.data.title === song.title) {
             li.classList.add('now-playing');
         }
+        
+        // 比對選取狀態
+        if (selectedNode && selectedNode.data && selectedNode.data.title === song.title) {
+            li.classList.add('selected');
+        }
+        
+        // 點擊整個 li 選取/取消選取歌曲
+        li.addEventListener('click', (e) => {
+            // 如果點擊的是垃圾桶圖示，不觸發選取
+            if (e.target.classList.contains('song-delete')) {
+                return;
+            }
+            toggleSongSelection(song.title);
+        });
 
         li.appendChild(label);
         li.appendChild(trash);
@@ -307,19 +331,55 @@ function renderList(list, currentSong) {
     // O(n) 渲染排序後的清單
     list.forEach((song, index) => {
         const li = document.createElement('li');
+        li.style.cursor = 'pointer'; // 整個 li 可點擊
+        
         const label = document.createElement('span');
         label.textContent = `${index + 1}. ${song.title} - ${song.artist}`;
+        
         const trash = document.createElement('i');
         trash.className = 'fa-solid fa-trash song-delete';
         trash.title = '刪除';
         trash.dataset.title = song.title;
+        
         if (isPlaying && currentSong && currentSong.title === song.title) {
             li.classList.add('now-playing');
         }
+        
+        // 比對選取狀態
+        if (selectedNode && selectedNode.data && selectedNode.data.title === song.title) {
+            li.classList.add('selected');
+        }
+        
+        // 點擊整個 li 選取/取消選取歌曲
+        li.addEventListener('click', (e) => {
+            // 如果點擊的是垃圾桶圖示，不觸發選取
+            if (e.target.classList.contains('song-delete')) {
+                return;
+            }
+            toggleSongSelection(song.title);
+        });
+        
         li.appendChild(label);
         li.appendChild(trash);
         songList.appendChild(li);
     });
+}
+
+// 切換歌曲選取狀態 - O(1)
+function toggleSongSelection(songTitle) {
+    const node = nodeTable[songTitle];
+    if (!node) return;
+    
+    // 如果點擊的是已選取的歌曲，取消選取
+    if (selectedNode && selectedNode.data && selectedNode.data.title === songTitle) {
+        selectedNode = null;
+    } else {
+        // 選取新歌曲
+        selectedNode = node;
+    }
+    
+    // 更新顯示
+    updatePlaylistDisplay();
 }
 
 // 加入歌曲到各資料結構 - O(1) add to list tail + O(1) hashtable + O(log n) BST
@@ -343,15 +403,37 @@ document.addEventListener('click', (e) => {
         const song = songTable[title];
         const node = nodeTable[title];
         if (song && node) {
+            // 調整當前播放節點
             if (currentNode === node) {
                 currentNode = currentNode.next || currentNode.prev || null;
             }
+            
+            // 調整選取節點
+            if (selectedNode === node) {
+                selectedNode = null;
+            }
+            
+            // 從資料結構中刪除
             playlistList.removeNode(node);
             bst.delete(title);
             delete songTable[title];
             delete nodeTable[title];
             filterQueue(nextQueue, s => s.title !== title);
             filterQueue(prevQueue, s => s.title !== title);
+            
+            // 如果處於搜尋模式，也要從搜尋結果中移除
+            if (isSearchMode && searchResults.length > 0) {
+                searchResults = searchResults.filter(s => s.title !== title);
+                // 如果搜尋結果變空，更新標題
+                if (searchResults.length === 0) {
+                    const playlistTitle = document.getElementById('playlist-title');
+                    playlistTitle.textContent = '搜尋結果 (0)';
+                } else {
+                    const playlistTitle = document.getElementById('playlist-title');
+                    playlistTitle.textContent = `搜尋結果 (${searchResults.length})`;
+                }
+            }
+            
             updatePlaylistDisplay();
             updateButtonStates();
         }

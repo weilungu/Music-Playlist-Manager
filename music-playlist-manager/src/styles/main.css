@@ -169,10 +169,26 @@ h2 {
     border-radius: 5px;
     border-left: 4px solid #35424a;
     position: relative;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease;
+}
+
+#song-list li span {
+    pointer-events: none; /* 讓 span 不攔截點擊事件 */
 }
 
 #song-list li:hover {
     background: #e9ecef;
+}
+
+/* 選取狀態下不要改變 hover 背景 */
+#song-list li.selected:hover {
+    background: #5dade2;
+}
+
+#song-list li.now-playing:hover {
+    background: #2ecc71;
 }
 
 /* 垃圾桶 icon：預設隱藏，hover 顯示 */
@@ -192,8 +208,14 @@ h2 {
     display: inline-block;
 }
 
+/* 選取和播放狀態下的垃圾桶為白色 */
+#song-list li.selected .song-delete,
+#song-list li.now-playing .song-delete {
+    color: #ffffff;
+}
+
 .song-delete:hover {
-    color: #000000; /* 保持黑色 */
+    opacity: 0.8;
 }
 
 #controls {
@@ -240,6 +262,12 @@ h2 {
     color: white;
     border-left-color: #1e8449;
     font-weight: bold;
+}
+
+#song-list li.selected {
+    background: #3498db;
+    color: white;
+    border-left-color: #2980b9;
 }
 
 #search {
