@@ -23,6 +23,8 @@ const bst = new BinarySearchTree();
 
 let isPlaying = false;
 let currentNode = null; // 目前播放的 DoublyLinkedList 節點
+let isSearchMode = false; // 是否處於搜尋模式
+let searchResults = []; // 搜尋結果快取
 let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -98,44 +100,54 @@ document.addEventListener('DOMContentLoaded', () => {
         updateButtonStates();
     });
     
-    // 上一首按鈕 - O(1) 使用雙向鏈結的 prev 指標
+    // 上一首按鈕 - O(1) 使用雙向鏈結的 prev 指標，或 O(n) 在搜尋結果中切換
     document.getElementById('prev').addEventListener('click', () => {
-        if (!playlistList.head) {
-            alert('播放清單是空的');
-            return;
-        }
-        
         if (!isPlaying) {
             return;
         }
         
-        if (!currentNode) {
-            currentNode = playlistList.tail; // 從最後一首開始
+        // 搜尋模式：在搜尋結果中切換
+        if (isSearchMode && searchResults.length > 0) {
+            navigateInSearchResults('prev');
         } else {
-            // O(1) 直接使用 prev 指標，循環播放
-            currentNode = currentNode.prev || playlistList.tail;
+            // 正常模式：在完整播放清單中切換
+            if (!playlistList.head) {
+                alert('播放清單是空的');
+                return;
+            }
+            
+            if (!currentNode) {
+                currentNode = playlistList.tail;
+            } else {
+                currentNode = currentNode.prev || playlistList.tail;
+            }
         }
         
         updatePlaylistDisplay();
     });
     
 
-    // 下一首按鈕 - O(1) 使用雙向鏈結的 next 指標
+    // 下一首按鈕 - O(1) 使用雙向鏈結的 next 指標，或 O(n) 在搜尋結果中切換
     document.getElementById('next').addEventListener('click', () => {
-        if (!playlistList.head) {
-            alert('播放清單是空的');
-            return;
-        }
-        
         if (!isPlaying) {
             return;
         }
         
-        if (!currentNode) {
-            currentNode = playlistList.head; // 從第一首開始
+        // 搜尋模式：在搜尋結果中切換
+        if (isSearchMode && searchResults.length > 0) {
+            navigateInSearchResults('next');
         } else {
-            // O(1) 直接使用 next 指標，循環播放
-            currentNode = currentNode.next || playlistList.head;
+            // 正常模式：在完整播放清單中切換
+            if (!playlistList.head) {
+                alert('播放清單是空的');
+                return;
+            }
+            
+            if (!currentNode) {
+                currentNode = playlistList.head;
+            } else {
+                currentNode = currentNode.next || playlistList.head;
+            }
         }
         
         updatePlaylistDisplay();
@@ -144,13 +156,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 隨機播放按鈕 - O(n) 遍歷取隨機節點（shuffle）
     document.getElementById('random').addEventListener('click', () => {
-        if (!playlistList.head) {
-            alert('播放清單是空的');
-            return;
+        // 搜尋模式：在搜尋結果中隨機
+        if (isSearchMode && searchResults.length > 0) {
+            const randomIndex = Math.floor(Math.random() * searchResults.length);
+            const randomSong = searchResults[randomIndex];
+            currentNode = nodeTable[randomSong.title];
+        } else {
+            // 正常模式：在完整播放清單中隨機
+            if (!playlistList.head) {
+                alert('播放清單是空的');
+                return;
+            }
+            const randomNode = playlistList.shuffle();
+            currentNode = randomNode;
         }
-        // O(n) 透過 DoublyLinkedList.shuffle() 取得隨機節點
-        const randomNode = playlistList.shuffle();
-        currentNode = randomNode;
         
         if (!isPlaying) {
             isPlaying = true;
@@ -167,19 +186,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('search-btn').addEventListener('click', () => {
         const searchTerm = document.getElementById('search-input').value.trim();
         if (searchTerm) {
-            // O(1) 使用 hashtable 依歌曲名查找
-            const direct = songTable[searchTerm];
-            // O(n) 依歌手名過濾（可優化：建立 artistTable）
-            const byArtist = Object.values(songTable).filter(s => s.artist === searchTerm);
-            const results = [];
-            if (direct) results.push(direct);
-            results.push(...byArtist.filter(s => !direct || s.title !== direct.title));
-            if (results.length > 0) {
-                alert(`找到 ${results.length} 首歌曲：\n` +
-                    results.map(s => `${s.title} - ${s.artist}`).join('\n'));
-            } else {
-                alert('找不到相關歌曲');
-            }
+            performSearch(searchTerm);
+        } else {
+            // 空搜尋詞，返回播放清單
+            backToPlaylist();
         }
     });
 
@@ -210,6 +220,11 @@ document.addEventListener('DOMContentLoaded', () => {
             renderList(sorted, currentNode ? currentNode.data : null);
         });
     }
+
+    // 返回播放清單按鈕
+    document.getElementById('back-to-playlist-btn').addEventListener('click', () => {
+        backToPlaylist();
+    });
 });
 
 // 更新按鈕狀態 - O(1)
@@ -238,6 +253,18 @@ function updateButtonStates() {
 // 更新播放清單顯示 - O(n) 遍歷與 DOM 操作
 // 未來優化方向：虛擬滾動、DOM diff、只更新變化的項目
 function updatePlaylistDisplay() {
+    // 如果處於搜尋模式，保持搜尋結果顯示
+    if (isSearchMode && searchResults.length > 0) {
+        renderList(searchResults, currentNode ? currentNode.data : null);
+        return;
+    } else if (isSearchMode && searchResults.length === 0) {
+        // 搜尋模式但無結果
+        const songList = document.getElementById('song-list');
+        songList.innerHTML = '<li style="text-align: center; color: #999;">找不到相關歌曲</li>';
+        return;
+    }
+    
+    // 正常模式：顯示完整播放清單
     const songList = document.getElementById('song-list');
     songList.innerHTML = '';
     const arr = playlistList.toArray(); // O(n) 遍歷鏈結串列
@@ -407,5 +434,100 @@ function reorderUnderlyingList(field, direction) {
     if (!currentNode && isPlaying) {
         currentNode = playlistList.head;
     }
+    updatePlaylistDisplay();
+}
+
+// 執行搜尋 - O(1) + O(n)
+function performSearch(searchTerm) {
+    // O(1) 使用 hashtable 依歌曲名查找
+    const byTitle = songTable[searchTerm];
+    
+    // O(n) 模糊搜尋：歌曲名或歌手名包含搜尋詞
+    const allSongs = Object.values(songTable);
+    const fuzzyResults = allSongs.filter(s => 
+        s.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        s.artist.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    // 去重（精確匹配優先）
+    const results = [];
+    const addedTitles = new Set();
+    
+    if (byTitle) {
+        results.push(byTitle);
+        addedTitles.add(byTitle.title);
+    }
+    
+    fuzzyResults.forEach(song => {
+        if (!addedTitles.has(song.title)) {
+            results.push(song);
+            addedTitles.add(song.title);
+        }
+    });
+    
+    // 切換到搜尋模式並顯示結果
+    isSearchMode = true;
+    searchResults = results;
+    
+    // 更新標題與按鈕顯示
+    const playlistTitle = document.getElementById('playlist-title');
+    const backButton = document.getElementById('back-to-playlist-btn');
+    
+    if (results.length > 0) {
+        playlistTitle.textContent = `搜尋結果 (${results.length})`;
+        backButton.style.display = 'inline-block';
+        renderList(results, currentNode ? currentNode.data : null);
+    } else {
+        playlistTitle.textContent = '搜尋結果 (0)';
+        backButton.style.display = 'inline-block';
+        const songList = document.getElementById('song-list');
+        songList.innerHTML = '<li style="text-align: center; color: #999;">找不到相關歌曲</li>';
+    }
+}
+
+// 在搜尋結果中導航 - O(n) 查找當前歌曲索引
+function navigateInSearchResults(direction) {
+    if (!searchResults || searchResults.length === 0) {
+        return;
+    }
+    
+    // 找到當前歌曲在搜尋結果中的索引
+    let currentIndex = -1;
+    if (currentNode && currentNode.data) {
+        currentIndex = searchResults.findIndex(s => s.title === currentNode.data.title);
+    }
+    
+    // 如果找不到當前歌曲，從第一首開始
+    if (currentIndex === -1) {
+        currentIndex = 0;
+    } else {
+        // 根據方向切換
+        if (direction === 'next') {
+            currentIndex = (currentIndex + 1) % searchResults.length; // 循環到第一首
+        } else if (direction === 'prev') {
+            currentIndex = (currentIndex - 1 + searchResults.length) % searchResults.length; // 循環到最後一首
+        }
+    }
+    
+    // 更新 currentNode
+    const nextSong = searchResults[currentIndex];
+    currentNode = nodeTable[nextSong.title];
+}
+
+// 返回播放清單 - O(1)
+function backToPlaylist() {
+    isSearchMode = false;
+    searchResults = [];
+    
+    // 恢復標題與隱藏按鈕
+    const playlistTitle = document.getElementById('playlist-title');
+    const backButton = document.getElementById('back-to-playlist-btn');
+    const searchInput = document.getElementById('search-input');
+    
+    playlistTitle.textContent = '播放清單';
+    backButton.style.display = 'none';
+    searchInput.value = ''; // 清空搜尋框
+    
+    // 重新顯示播放清單
     updatePlaylistDisplay();
 }
