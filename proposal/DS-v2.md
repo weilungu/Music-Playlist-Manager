@@ -22,15 +22,14 @@
   - 支援儲存 LinkedList 節點引用（目前存物件）
   - 佇列持久化（localStorage）
 
-### 3. HashTable（快速查詢）
-- 檔案：缺（建議新增 `src/scripts/dataStructures/HashTable.js`）
-- 功能：O(1) 查詢/新增/刪除
-- 目前以 JS 物件暫代（`main.js` 的 `songTable`/`nodeTable`）
-- 可改進：
-  - 實作 Chaining（陣列鏈結法）
-  - 支援 MultiMap（歌手對多首歌）
-  - 完整 API：`has`、`keys`、`values`、`entries`、`getAll`、`getLoadFactor`
-  - 改進 hash function（prime/djb2）
+### 3. 查詢索引（以 JS 物件取代 HashTable）
+- 檔案：不新增獨立檔案，直接使用原生物件（如 `songTable`/`nodeTable`）
+- 功能：O(1) 查詢/新增/刪除（平均）
+- 建議：
+  - 一對一索引：`title -> node`
+  - 一對多索引：`artist -> [nodes]`
+  - 規範化鍵值（`trim`、大小寫）以降低歧異
+  - 提供等效 API：`findByTitle`、`findByArtist`、`hasTitle`、`clearIndexes`
 
 ### 4. BinarySearchTree（排序所有歌曲）
 - 檔案：`src/scripts/dataStructures/BinarySearchTree.js`
@@ -47,10 +46,10 @@
 
 | 操作 | 資料結構 | 時間複雜度 |
 |------|-----------|------------|
-| 新增歌曲 | DoublyLinkedList/HashTable/BST | O(1)+O(1)+O(log n) |
-| 刪除歌曲 | DoublyLinkedList/HashTable/BST | O(1)+O(1)+O(log n) |
-| 搜尋歌名 | HashTable | O(1) |
-| 搜尋歌手 | HashTable (MultiMap) | O(1) |
+| 新增歌曲 | DoublyLinkedList/JS Object/BST | O(1)+O(1)+O(log n) |
+| 刪除歌曲 | DoublyLinkedList/JS Object/BST | O(1)+O(1)+O(log n) |
+| 搜尋歌名 | JS Object | O(1) |
+| 搜尋歌手 | JS Object (MultiMap) | O(1) |
 | 前後切換 | DoublyLinkedList | O(1) |
 | 隨機播放 | DoublyLinkedList | O(n) |
 | 排序顯示 | BST | O(n) |
@@ -63,7 +62,7 @@
 ### 1. 資料結構 API 完整性
 - DoublyLinkedList 應補齊 `get(index)`、`find(callback)`、`insertAt`、`removeAt`、`setCurrent(node)`
 - Queue 可支援儲存節點引用，並考慮持久化
-- HashTable 應獨立實作，支援碰撞處理與一對多
+- 查詢索引以 JS 物件實作，不另建 HashTable 類別
 - BinarySearchTree 應補齊遍歷、輔助、平衡等方法
 
 ### 2. 資料同步與一致性
@@ -90,7 +89,7 @@
 
 ## 四、接下來可改進的地方（優先級）
 
-1. 新增/補齊 HashTable.js，支援碰撞與 MultiMap
+1. 查詢索引以 JS 物件整理規範與 API（不新增 HashTable.js）
 2. DoublyLinkedList 補齊 get/find/insertAt/removeAt/setCurrent
 3. BinarySearchTree 補齊 findMax/getHeight/isEmpty/getSize/toArray
 4. 新增單元測試，驗證所有資料結構方法

@@ -14,8 +14,9 @@ class MusicManager {
     constructor() {
         this.playlist = new DoublyLinkedList();  // 主要播放順序
         this.queue = new Queue();                 // 即將播放
-        this.songHashByTitle = new HashTable(100); // 曲名索引
-        this.songHashByArtist = new HashTable(100); // 歌手索引
+        // 使用 JavaScript 物件作為雜湊表（曲名/歌手索引）
+        this.songIndexByTitle = {}; // title -> node
+        this.songIndexByArtist = {}; // artist -> [nodes]
         this.sortedSongs = new BinarySearchTree(); // 排序檢視
     }
 }
@@ -27,8 +28,8 @@ class MusicManager {
 |------|-----------|---------|
 | 新增歌曲   | O(1) | DoublyLinkedList.append() |
 | 刪除歌曲   | O(1) | 需要節點引用 |
-| 搜尋(曲名) | O(1) | HashTable |
-| 搜尋(歌手) | O(1) | HashTable (MultiMap) |
+| 搜尋(曲名) | O(1) | JS Object |
+| 搜尋(歌手) | O(1) | JS Object (MultiMap) |
 | 下一首/上一首 | O(1) | DoublyLinkedList |
 | 隨機播放 | O(n) | Fisher-Yates Shuffle |
 | 排序顯示 | O(n) | BST 中序遍歷 |
@@ -227,168 +228,67 @@ queue.enqueue(song.id);
 
 ---
 
-## 🗂️ 3. Hash Table（快速搜尋）
+## 🗂️ 3. 查詢索引（以 JS 物件取代 HashTable）
 
-### 🔴 嚴重問題：碰撞處理不完整
-
-#### ❌ 目前的問題
+本專案不額外實作 HashTable 類別，改用原生 JS 物件達成 O(1) 查詢/更新：
 ```javascript
-add(key, value) {
-    const index = this.hash(key);
-    this.table[index] = { key, value };
-    // ⚠️ 如果兩個不同的 key 產生相同的 hash，會互相覆蓋！
+// 一對一：title -> node
+const songIndexByTitle = Object.create(null);
+// 一對多：artist -> [nodes]
+const songIndexByArtist = Object.create(null);
+
+function indexSong(song, node) {
+    songIndexByTitle[song.title] = node;
+    const list = songIndexByArtist[song.artist] || (songIndexByArtist[song.artist] = []);
+    list.push(node);
 }
+
+function removeIndex(song) {
+    delete songIndexByTitle[song.title];
+    const list = songIndexByArtist[song.artist];
+    if (list) {
+        songIndexByArtist[song.artist] = list.filter(n => n.data.title !== song.title);
+        if (songIndexByArtist[song.artist].length === 0) delete songIndexByArtist[song.artist];
+    }
+}
+
+function findByTitle(title) { const node = songIndexByTitle[title]; return node ? node.data : null; }
+function findByArtist(artist) { const nodes = songIndexByArtist[artist] || []; return nodes.map(n => n.data); }
 ```
 
-#### ✅ 正確的 Chaining 實作
-```javascript
-add(key, value) {
-    const index = this.hash(key);
-    
-    // 初始化 bucket（使用陣列處理碰撞）
-    if (!this.table[index]) {
-        this.table[index] = [];
-    }
-    
-    // 檢查是否已存在（更新 or 新增）
-    const existing = this.table[index].find(item => item.key === key);
-    if (existing) {
-        existing.value = value; // 更新
-    } else {
-        this.table[index].push({ key, value }); // 新增
-    }
-}
+一對多關係改以 JS 物件的陣列值實現（如上 `songIndexByArtist`）。
 
-get(key) {
-    const index = this.hash(key);
-    const bucket = this.table[index];
-    
-    if (!bucket) return null;
-    
-    const item = bucket.find(item => item.key === key);
-    return item ? item.value : null;
-}
+改用原生物件，不需自訂雜湊函數；關注鍵規範化（大小寫、trim）以降低鍵值歧異：
+```javascript
+const norm = s => (s || '').trim();
+songIndexByTitle[norm(song.title)] = node;
 ```
 
-### 🔴 關鍵問題：不支援一對多關係
-
-**場景：一個歌手有多首歌**
-
+以物件實作的等效 API：
 ```javascript
-// ❌ 目前無法處理
-hashByArtist.add("Taylor Swift", song1);
-hashByArtist.add("Taylor Swift", song2); // 會覆蓋 song1
-
-// ✅ 需要支援 MultiMap
-class HashTable {
-    add(key, value, allowMultiple = false) {
-        const index = this.hash(key);
-        
-        if (!this.table[index]) {
-            this.table[index] = [];
-        }
-        
-        if (allowMultiple) {
-            // 允許同一個 key 對應多個 value
-            this.table[index].push({ key, value });
-        } else {
-            // 一對一關係
-            const existing = this.table[index].find(item => item.key === key);
-            if (existing) {
-                existing.value = value;
-            } else {
-                this.table[index].push({ key, value });
-            }
-        }
-    }
-    
-    getAll(key) {
-        // 取得某個 key 的所有 value（回傳陣列）
-        const index = this.hash(key);
-        const bucket = this.table[index];
-        
-        if (!bucket) return [];
-        
-        return bucket
-            .filter(item => item.key === key)
-            .map(item => item.value);
-    }
-}
-```
-
-### 🔴 Hash Function 太簡單
-
-```javascript
-// ❌ 目前的實作
-hash(key) {
-    let hash = 0;
-    for (let i = 0; i < key.length; i++) {
-        hash += key.charCodeAt(i);
-    }
-    return hash % this.size;
-}
-
-// 問題：
-// "abc" → 97+98+99 = 294
-// "bca" → 98+99+97 = 294  ← 碰撞！
-
-// ✅ 改進的 Hash Function
-hash(key) {
-    let hash = 0;
-    const prime = 31; // 使用質數減少碰撞
-    
-    for (let i = 0; i < key.length; i++) {
-        hash = (hash * prime + key.charCodeAt(i)) % this.size;
-    }
-    
-    return hash;
-}
-
-// 或使用更好的 DJB2 演算法
-hashDJB2(key) {
-    let hash = 5381;
-    for (let i = 0; i < key.length; i++) {
-        hash = ((hash << 5) + hash) + key.charCodeAt(i);
-    }
-    return Math.abs(hash % this.size);
-}
-```
-
-### ❌ 缺少的方法
-```javascript
-class HashTable {
-    // ❌ 缺少：
-    has(key)              // 檢查 key 是否存在
-    keys()                // 回傳所有 key
-    values()              // 回傳所有 value
-    entries()             // 回傳所有 [key, value] 對
-    clear()               // 清空 hash table
-    getSize()             // 回傳實際元素數量
-    getLoadFactor()       // 回傳負載因子（用於判斷是否需要 resize）
-}
+function hasTitle(title) { return Object.hasOwn(songIndexByTitle, title); }
+function titleKeys() { return Object.keys(songIndexByTitle); }
+function clearIndexes() { for (const k of Object.keys(songIndexByTitle)) delete songIndexByTitle[k]; for (const k of Object.keys(songIndexByArtist)) delete songIndexByArtist[k]; }
 ```
 
 ### ✅ 實際應用策略
 
 ```javascript
-// 使用兩個 Hash Table
-this.songHashByTitle = new HashTable(100);   // title → Song (一對一)
-this.songHashByArtist = new HashTable(100);  // artist → [Songs] (一對多)
+// 使用兩個原生物件索引
+this.songIndexByTitle = Object.create(null);   // title → node
+this.songIndexByArtist = Object.create(null);  // artist → [nodes]
 
 // 新增歌曲時同步更新
 addSong(song) {
     const node = this.playlist.append(song);
-    
-    // Hash Table 儲存「節點引用」而非歌曲資料
-    // 這樣刪除時可以直接從 LinkedList 移除（O(1)）
-    this.songHashByTitle.add(song.title, node);
-    this.songHashByArtist.add(song.artist, node, true); // allowMultiple=true
+    // 建立索引
+    indexSong(song, node);
     this.sortedSongs.insert(song);
 }
 
-// 搜尋歌手的所有歌曲
+// 搜尋
 searchByArtist(artist) {
-    return this.songHashByArtist.getAll(artist); // O(1)
+    return findByArtist(artist); // O(1)
 }
 ```
 
