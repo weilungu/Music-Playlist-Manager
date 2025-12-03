@@ -88,8 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (selectedNode) {
                 currentNode = selectedNode;
                 selectedNode = null; // 播放後清除選取狀態
+            } else if (isSearchMode && searchResults.length > 0) {
+                // 搜尋模式下，從搜尋結果的第一首開始
+                const firstSong = searchResults[0];
+                currentNode = nodeTable[firstSong.title];
             } else {
-                // 沒有選取時，總是從第一首開始播放
+                // 正常模式，從第一首開始播放
                 currentNode = playlistList.head;
             }
             
@@ -215,6 +219,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 icon.className = 'fa-solid fa-arrow-down';
             }
+            
+            // 觸發排序更新
+            renderSortedBySelection();
         });
     }
 
@@ -453,7 +460,14 @@ function renderSortedBySelection() {
     const select = document.getElementById('sort-select');
     if (!select) return;
     const field = select.value; // 'time' | 'title' | 'artist'
-    reorderUnderlyingList(field, sortDirection);
+    
+    // 如果處於搜尋模式，對搜尋結果進行排序
+    if (isSearchMode && searchResults.length > 0) {
+        sortSearchResults(field, sortDirection);
+    } else {
+        // 正常模式，重新排序底層播放清單
+        reorderUnderlyingList(field, sortDirection);
+    }
 }
 
 // 綁定下拉選單變更與方向按鈕點擊以重新渲染排序
@@ -517,6 +531,43 @@ function reorderUnderlyingList(field, direction) {
         currentNode = playlistList.head;
     }
     updatePlaylistDisplay();
+}
+
+// 對搜尋結果進行排序 - O(n log n)
+function sortSearchResults(field, direction) {
+    if (!searchResults || searchResults.length === 0) return;
+    
+    const currentTitle = currentNode && currentNode.data && currentNode.data.title;
+    
+    // 產生排序 key
+    const keyFn = (s) => {
+        if (field === 'time') return Number(s.addedAt || 0);
+        if (field === 'title') return (s.title || '').trim().toLowerCase();
+        if (field === 'artist') return (s.artist || '').trim().toLowerCase();
+        return (s.title || '').trim().toLowerCase();
+    };
+    
+    searchResults.sort((a, b) => {
+        const ka = keyFn(a);
+        const kb = keyFn(b);
+        if (ka < kb) return -1;
+        if (ka > kb) return 1;
+        // 次要比較：用完整標題
+        const ta = (a.title || '').toLowerCase();
+        const tb = (b.title || '').toLowerCase();
+        if (ta < tb) return -1;
+        if (ta > tb) return 1;
+        return 0;
+    });
+    
+    if (direction === 'desc') searchResults.reverse();
+    
+    // 更新搜尋結果數量標題
+    const playlistTitle = document.getElementById('playlist-title');
+    playlistTitle.textContent = `搜尋結果 (${searchResults.length})`;
+    
+    // 重新渲染
+    renderList(searchResults, currentNode ? currentNode.data : null);
 }
 
 // 執行搜尋 - O(1) + O(n)
