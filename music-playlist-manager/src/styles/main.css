@@ -191,27 +191,17 @@ h2 {
     background: #2ecc71;
 }
 
-/* 垃圾桶 icon：預設隱藏，hover 顯示 */
+/* 垃圾桶 icon：只在選取狀態下顯示 */
 .song-delete {
     position: absolute;
     right: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: #000000; /* 黑色圖示 */
+    color: #ffffff; /* 白色圖示 */
     cursor: pointer;
-    display: none;
+    display: inline-block; /* 選取時已顯示，不需要 hover */
     font-size: 16px;
     z-index: 1;
-}
-
-#song-list li:hover .song-delete {
-    display: inline-block;
-}
-
-/* 選取和播放狀態下的垃圾桶為白色 */
-#song-list li.selected .song-delete,
-#song-list li.now-playing .song-delete {
-    color: #ffffff;
 }
 
 .song-delete:hover {

@@ -296,20 +296,25 @@ function updatePlaylistDisplay() {
         const label = document.createElement('span');
         label.textContent = `${index + 1}. ${song.title} - ${song.artist}`;
 
-        // 建立垃圾桶 icon（hover 顯示）
-        const trash = document.createElement('i');
-        trash.className = 'fa-solid fa-trash song-delete';
-        trash.title = '刪除';
-        trash.dataset.title = song.title;
-
         // O(1) 比對當前播放歌曲
         if (isPlaying && currentNode && currentNode.data && currentNode.data.title === song.title) {
             li.classList.add('now-playing');
         }
         
         // 比對選取狀態
-        if (selectedNode && selectedNode.data && selectedNode.data.title === song.title) {
+        const isSelected = selectedNode && selectedNode.data && selectedNode.data.title === song.title;
+        if (isSelected) {
             li.classList.add('selected');
+            
+            // 只有選取時才顯示垃圾桶 icon
+            const trash = document.createElement('i');
+            trash.className = 'fa-solid fa-trash song-delete';
+            trash.title = '刪除';
+            trash.dataset.title = song.title;
+            li.appendChild(label);
+            li.appendChild(trash);
+        } else {
+            li.appendChild(label);
         }
         
         // 點擊整個 li 選取/取消選取歌曲
@@ -321,8 +326,6 @@ function updatePlaylistDisplay() {
             toggleSongSelection(song.title);
         });
 
-        li.appendChild(label);
-        li.appendChild(trash);
         songList.appendChild(li);
     });
 }
@@ -343,18 +346,24 @@ function renderList(list, currentSong) {
         const label = document.createElement('span');
         label.textContent = `${index + 1}. ${song.title} - ${song.artist}`;
         
-        const trash = document.createElement('i');
-        trash.className = 'fa-solid fa-trash song-delete';
-        trash.title = '刪除';
-        trash.dataset.title = song.title;
-        
         if (isPlaying && currentSong && currentSong.title === song.title) {
             li.classList.add('now-playing');
         }
         
         // 比對選取狀態
-        if (selectedNode && selectedNode.data && selectedNode.data.title === song.title) {
+        const isSelected = selectedNode && selectedNode.data && selectedNode.data.title === song.title;
+        if (isSelected) {
             li.classList.add('selected');
+            
+            // 只有選取時才顯示垃圾桶 icon
+            const trash = document.createElement('i');
+            trash.className = 'fa-solid fa-trash song-delete';
+            trash.title = '刪除';
+            trash.dataset.title = song.title;
+            li.appendChild(label);
+            li.appendChild(trash);
+        } else {
+            li.appendChild(label);
         }
         
         // 點擊整個 li 選取/取消選取歌曲
@@ -366,8 +375,6 @@ function renderList(list, currentSong) {
             toggleSongSelection(song.title);
         });
         
-        li.appendChild(label);
-        li.appendChild(trash);
         songList.appendChild(li);
     });
 }
