@@ -240,6 +240,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('back-to-playlist-btn').addEventListener('click', () => {
         backToPlaylist();
     });
+    
+    // 點擊空白處取消選取
+    document.addEventListener('click', (e) => {
+        // 由於歌曲點擊事件已阻止冒泡，此處只會接收到非歌曲項目的點擊
+        if (selectedNode) {
+            selectedNode = null;
+            updatePlaylistDisplay();
+        }
+    });
 });
 
 // 更新按鈕狀態 - O(1)
@@ -323,6 +332,7 @@ function updatePlaylistDisplay() {
             if (e.target.classList.contains('song-delete')) {
                 return;
             }
+            e.stopPropagation(); // 阻止事件冒泡到 document
             toggleSongSelection(song.title);
         });
 
@@ -372,6 +382,7 @@ function renderList(list, currentSong) {
             if (e.target.classList.contains('song-delete')) {
                 return;
             }
+            e.stopPropagation(); // 阻止事件冒泡到 document
             toggleSongSelection(song.title);
         });
         
@@ -383,6 +394,11 @@ function renderList(list, currentSong) {
 function toggleSongSelection(songTitle) {
     const node = nodeTable[songTitle];
     if (!node) return;
+    
+    // 如果正在播放該歌曲，不允許選取
+    if (isPlaying && currentNode && currentNode.data && currentNode.data.title === songTitle) {
+        return;
+    }
     
     // 如果點擊的是已選取的歌曲，取消選取
     if (selectedNode && selectedNode.data && selectedNode.data.title === songTitle) {
