@@ -25,7 +25,7 @@
                 </button>
             </div>
             <div class="header-search">
-                <input type="text" id="search-input" placeholder="搜尋歌曲...">
+                <input type="text" id="search-input" placeholder="搜尋歌曲、歌手...">
                 <button id="search-btn" type="button">搜尋</button>
             </div>
         </div>
@@ -36,6 +36,11 @@
                 <input type="text" id="song-name-input" placeholder="歌曲名稱">
                 <input type="text" id="artist-name-input" placeholder="歌手名稱">
                 <button id="add-song-btn">新增歌曲</button>
+            </div>
+            <div class="file-input-group">
+                <input type="file" id="audio-file-input" accept="audio/*" style="display: none;">
+                <button id="select-file-btn" type="button">選取檔案</button>
+                <span id="selected-file-name" class="file-name-display"></span>
             </div>
         </div>
         
