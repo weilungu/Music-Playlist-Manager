@@ -631,7 +631,7 @@ function performSearch(searchTerm) {
     
     if (results.length > 0) {
         playlistTitle.textContent = `搜尋結果 (${results.length})`;
-        backButton.style.display = 'inline-block';
+        backButton.style.display = 'inline-blo  ck';
         renderList(results, currentNode ? currentNode.data : null);
     } else {
         playlistTitle.textContent = '搜尋結果 (0)';
