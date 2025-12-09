@@ -28,16 +28,89 @@ let isSearchMode = false; // 是否處於搜尋模式
 let searchResults = []; // 搜尋結果快取
 let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
 
+// localStorage 相關常數
+const PLAYLIST_STORAGE_KEY = 'musicPlaylist';
+const SORT_DIRECTION_STORAGE_KEY = 'sortDirection';
+
+// 保存播放清單到 localStorage
+function savePlaylistToStorage() {
+    try {
+        const playlistArray = playlistList.toArray();
+        const playlistData = JSON.stringify(playlistArray);
+        localStorage.setItem(PLAYLIST_STORAGE_KEY, playlistData);
+    } catch (e) {
+        console.error('儲存播放清單到 localStorage 失敗:', e);
+    }
+}
+
+// 從 localStorage 加載播放清單
+function loadPlaylistFromStorage() {
+    try {
+        const playlistData = localStorage.getItem(PLAYLIST_STORAGE_KEY);
+        if (playlistData) {
+            const playlistArray = JSON.parse(playlistData);
+            return playlistArray;
+        }
+    } catch (e) {
+        console.error('從 localStorage 加載播放清單失敗:', e);
+    }
+    return [];
+}
+
+// 保存排序方向到 localStorage
+function saveSortDirectionToStorage() {
+    try {
+        localStorage.setItem(SORT_DIRECTION_STORAGE_KEY, sortDirection);
+    } catch (e) {
+        console.error('儲存排序方向到 localStorage 失敗:', e);
+    }
+}
+
+// 從 localStorage 加載排序方向
+function loadSortDirectionFromStorage() {
+    try {
+        const direction = localStorage.getItem(SORT_DIRECTION_STORAGE_KEY);
+        if (direction && (direction === 'asc' || direction === 'desc')) {
+            return direction;
+        }
+    } catch (e) {
+        console.error('從 localStorage 加載排序方向失敗:', e);
+    }
+    return 'asc';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    // 初始化一些範例歌曲到資料結構
-    const initialSongs = [
-        { title: '歌曲1', artist: '歌手A' },
-        { title: '歌曲2', artist: '歌手B' },
-        { title: '歌曲3', artist: '歌手C' }
-    ];
-    initialSongs.forEach(song => {
+    // 從 localStorage 加載排序方向
+    sortDirection = loadSortDirectionFromStorage();
+    
+    // 從 localStorage 加載播放清單
+    let savedSongs = loadPlaylistFromStorage();
+    
+    // 如果 localStorage 沒有資料，使用範例歌曲
+    if (savedSongs.length === 0) {
+        savedSongs = [
+            { title: '歌曲1', artist: '歌手A', addedAt: Date.now() },
+            { title: '歌曲2', artist: '歌手B', addedAt: Date.now() },
+            { title: '歌曲3', artist: '歌手C', addedAt: Date.now() }
+        ];
+    }
+    
+    // 初始化播放清單資料
+    savedSongs.forEach(song => {
         addSongToStructures(song);
     });
+    
+    // 更新排序方向按鈕的箭頭圖示
+    const sortDirectionBtn = document.getElementById('sort-direction-btn');
+    if (sortDirectionBtn) {
+        const icon = sortDirectionBtn.querySelector('i');
+        if (sortDirection === 'asc') {
+            icon.className = 'fa-solid fa-arrow-up';
+        } else {
+            icon.className = 'fa-solid fa-arrow-down';
+        }
+    }
+    
     updatePlaylistDisplay();
     updateButtonStates();
     
@@ -205,12 +278,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 排序方向切換按鈕
-    const sortDirectionBtn = document.getElementById('sort-direction-btn');
+    // 排序方向切換按鈕已在初始化時設定，此處直接新增事件監聽器
     if (sortDirectionBtn) {
         sortDirectionBtn.addEventListener('click', () => {
             // 切換方向
             sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            
+            // 保存排序方向到 localStorage
+            saveSortDirectionToStorage();
             
             // 更新箭頭圖示
             const icon = sortDirectionBtn.querySelector('i');
@@ -422,6 +497,9 @@ function addSongToStructures(song) {
     songTable[song.title] = song; // O(1) hashtable 存歌曲
     nodeTable[song.title] = node; // O(1) 存節點引用
     bst.insert(song); // 仍以標題插入 BST 做搜尋 / 顯示用
+    
+    // 保存到 localStorage
+    savePlaylistToStorage();
 }
 
 // 過濾 queue 的 items（簡單重建）- O(n) 重建 queue- O(n) 重建 queue
@@ -463,6 +541,9 @@ document.addEventListener('click', (e) => {
                     playlistTitle.textContent = `搜尋結果 (${searchResults.length})`;
                 }
             }
+            
+            // 保存到 localStorage
+            savePlaylistToStorage();
             
             updatePlaylistDisplay();
             updateButtonStates();
