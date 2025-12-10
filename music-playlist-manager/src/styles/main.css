@@ -232,10 +232,14 @@ h2 {
     display: inline-block; /* 選取時已顯示，不需要 hover */
     font-size: 16px;
     z-index: 1;
+    padding: 8px 10px; /* 增加點擊範圍 */
+    border-radius: 4px;
+    transition: background 0.2s ease;
 }
 
 .song-delete:hover {
-    opacity: 0.8;
+    background: rgba(0, 0, 0, 0.1);
+    opacity: 1;
 }
 
 #controls {

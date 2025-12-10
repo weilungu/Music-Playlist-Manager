@@ -465,6 +465,7 @@ function updatePlaylistDisplay() {
             trash.className = 'fa-solid fa-trash song-delete';
             trash.title = '刪除';
             trash.dataset.title = song.title;
+            trash.dataset.artist = song.artist;
             li.appendChild(label);
             li.appendChild(trash);
         } else {
