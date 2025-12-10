@@ -254,6 +254,49 @@ h2 {
     background: rgba(0, 0, 0, 0.1);
 }
 
+/* 鉛筆 icon：預設隱藏，hover 或 selected 時顯示 */
+.song-edit {
+    position: absolute;
+    right: 50px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #7f8c8d; /* 淡灰色圖示 */
+    cursor: pointer;
+    font-size: 16px;
+    z-index: 1;
+    padding: 8px 10px; /* 增加點擊範圍 */
+    border-radius: 4px;
+    transition: background 0.2s ease, opacity 0.2s ease;
+    opacity: 0; /* 預設隱藏 */
+    pointer-events: none; /* 隱藏時不可點擊 */
+}
+
+/* 當 li 被 hover 或 selected 時顯示鉛筆（但遺失音訊的歌曲除外） */
+#song-list li:hover .song-edit:not(.hidden),
+#song-list li.selected .song-edit:not(.hidden) {
+    opacity: 1;
+    pointer-events: auto; /* 可點擊 */
+}
+
+.song-edit:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* 遺失音訊的歌曲樣式 */
+#song-list li.missing-audio {
+    border-left-color: #e74c3c; /* 紅色邊框 */
+}
+
+#song-list li.missing-audio span {
+    color: #e74c3c; /* 紅色文字 */
+    text-decoration: line-through; /* 刪除線 */
+}
+
+/* 遺失音訊歌曲的鉛筆 icon 隱藏 */
+#song-list li.missing-audio .song-edit {
+    display: none;
+}
+
 #controls {
     display: flex;
     gap: 10px;

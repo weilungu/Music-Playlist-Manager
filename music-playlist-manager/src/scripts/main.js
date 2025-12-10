@@ -33,6 +33,14 @@ let audioFileMap = {}; // 歌曲名稱+歌手 -> File 物件的映射
 // localStorage 相關常數
 const PLAYLIST_STORAGE_KEY = 'musicPlaylist';
 const SORT_DIRECTION_STORAGE_KEY = 'sortDirection';
+const AUDIO_FILES_STORAGE_KEY = 'musicAudioFiles';
+
+// IndexedDB 相關
+const DB_NAME = 'MusicPlaylistDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'audioFiles';
+
+let db = null;
 
 // 保存播放清單到 localStorage
 function savePlaylistToStorage() {
@@ -43,6 +51,12 @@ function savePlaylistToStorage() {
     } catch (e) {
         console.error('儲存播放清單到 localStorage 失敗:', e);
     }
+}
+
+// 保存播放清單和音訊檔案到 localStorage
+async function savePlaylistAndAudioToStorage() {
+    savePlaylistToStorage();
+    await saveAudioFilesToStorage();
 }
 
 // 從 localStorage 加載播放清單
@@ -79,6 +93,244 @@ function loadSortDirectionFromStorage() {
         console.error('從 localStorage 加載排序方向失敗:', e);
     }
     return 'asc';
+}
+
+// 初始化 IndexedDB
+function initIndexedDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => {
+            console.error('IndexedDB 開啟失敗:', request.error);
+            reject(request.error);
+        };
+        
+        request.onsuccess = () => {
+            db = request.result;
+            console.log('IndexedDB 初始化成功');
+            resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            if (!database.objectStoreNames.contains(STORE_NAME)) {
+                database.createObjectStore(STORE_NAME, { keyPath: 'key' });
+                console.log('建立 IndexedDB 物件儲存區');
+            }
+        };
+    });
+}
+
+// 儲存檔案到 IndexedDB
+async function saveFileToIndexedDB(key, file) {
+    if (!db) {
+        await initIndexedDB();
+    }
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.put({ key, file });
+        
+        request.onerror = () => {
+            console.error(`保存檔案 ${key} 到 IndexedDB 失敗:`, request.error);
+            reject(request.error);
+        };
+        
+        request.onsuccess = () => {
+            console.log(`成功保存檔案 ${key} 到 IndexedDB`);
+            resolve();
+        };
+    });
+}
+
+// 從 IndexedDB 加載檔案
+async function loadFileFromIndexedDB(key) {
+    if (!db) {
+        await initIndexedDB();
+    }
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.get(key);
+        
+        request.onerror = () => {
+            console.error(`加載檔案 ${key} 從 IndexedDB 失敗:`, request.error);
+            reject(request.error);
+        };
+        
+        request.onsuccess = () => {
+            if (request.result && request.result.file) {
+                console.log(`成功加載檔案 ${key} 從 IndexedDB`);
+                resolve(request.result.file);
+            } else {
+                resolve(null);
+            }
+        };
+    });
+}
+
+// 刪除檔案從 IndexedDB
+async function deleteFileFromIndexedDB(key) {
+    if (!db) {
+        await initIndexedDB();
+    }
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(key);
+        
+        request.onerror = () => {
+            console.error(`刪除檔案 ${key} 從 IndexedDB 失敗:`, request.error);
+            reject(request.error);
+        };
+        
+        request.onsuccess = () => {
+            console.log(`成功刪除檔案 ${key} 從 IndexedDB`);
+            resolve();
+        };
+    });
+}
+
+// 從 IndexedDB 加載所有音訊檔案
+async function loadAllAudioFilesFromIndexedDB() {
+    if (!db) {
+        await initIndexedDB();
+    }
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAll();
+        
+        request.onerror = () => {
+            console.error('加載所有檔案從 IndexedDB 失敗:', request.error);
+            reject(request.error);
+        };
+        
+        request.onsuccess = () => {
+            const results = request.result;
+            console.log(`從 IndexedDB 加載 ${results.length} 個檔案`);
+            resolve(results);
+        };
+    });
+}
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            resolve(reader.result); // Data URL 格式：data:audio/mpeg;base64,...
+        };
+        reader.onerror = () => {
+            reject(reader.error);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// 將 Base64 字符串轉換回 File 物件
+function base64ToFile(base64Data, filename, mimeType = 'audio/mpeg') {
+    try {
+        // 處理 Data URL 格式
+        let base64String = base64Data;
+        if (base64Data.includes(',')) {
+            base64String = base64Data.split(',')[1];
+        }
+        
+        const bstr = atob(base64String);
+        const n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        
+        for (let i = 0; i < n; i++) {
+            u8arr[i] = bstr.charCodeAt(i);
+        }
+        
+        return new File([u8arr], filename, { type: mimeType });
+    } catch (e) {
+        console.error(`base64ToFile 轉換失敗:`, e);
+        return null;
+    }
+}
+
+// 保存音訊檔案到 IndexedDB 和 localStorage
+async function saveAudioFilesToStorage() {
+    try {
+        // 首先嘗試保存到 IndexedDB（更適合大檔案）
+        console.log('開始保存音訊檔案到 IndexedDB...');
+        for (const [key, file] of Object.entries(audioFileMap)) {
+            try {
+                await saveFileToIndexedDB(key, file);
+            } catch (e) {
+                console.error(`保存檔案 ${key} 到 IndexedDB 失敗:`, e);
+            }
+        }
+        
+        // 同時保存到 localStorage（作為備份，只保存檔案資訊）
+        try {
+            const audioFilesInfo = {};
+            for (const [key, file] of Object.entries(audioFileMap)) {
+                audioFilesInfo[key] = {
+                    filename: file.name,
+                    type: file.type,
+                    lastModified: file.lastModified,
+                    size: file.size
+                };
+            }
+            localStorage.setItem(AUDIO_FILES_STORAGE_KEY, JSON.stringify(audioFilesInfo));
+            console.log('成功保存音訊檔案資訊到 localStorage');
+        } catch (e) {
+            console.warn('保存到 localStorage 失敗（可能空間不足）:', e);
+        }
+    } catch (e) {
+        console.error('儲存音訊檔案失敗:', e);
+    }
+}
+
+// 從 IndexedDB 和 localStorage 加載音訊檔案
+async function loadAudioFilesFromStorage() {
+    try {
+        console.log('開始加載音訊檔案...');
+        audioFileMap = {};
+        
+        // 首先嘗試從 IndexedDB 加載
+        try {
+            const files = await loadAllAudioFilesFromIndexedDB();
+            for (const item of files) {
+                if (item.file) {
+                    audioFileMap[item.key] = item.file;
+                    console.log(`成功從 IndexedDB 加載: ${item.key}`);
+                }
+            }
+            
+            if (Object.keys(audioFileMap).length > 0) {
+                console.log(`共從 IndexedDB 加載 ${Object.keys(audioFileMap).length} 個檔案`);
+                return true;
+            }
+        } catch (e) {
+            console.warn('從 IndexedDB 加載失敗（可能瀏覽器不支持），嘗試 localStorage:', e);
+        }
+        
+        // 如果 IndexedDB 失敗或無檔案，嘗試從 localStorage 加載備份
+        try {
+            const audioFilesInfo = localStorage.getItem(AUDIO_FILES_STORAGE_KEY);
+            if (audioFilesInfo) {
+                const parsedInfo = JSON.parse(audioFilesInfo);
+                console.log('找到 localStorage 備份，共', Object.keys(parsedInfo).length, '個檔案');
+                // localStorage 中只有檔案資訊，實際檔案應該在 IndexedDB 中
+                // 如果都沒有，則檔案遺失
+                return Object.keys(audioFileMap).length > 0;
+            }
+        } catch (e) {
+            console.warn('從 localStorage 加載備份失敗:', e);
+        }
+        
+        return Object.keys(audioFileMap).length > 0;
+    } catch (e) {
+        console.error('從儲存加載音訊檔案失敗:', e);
+        return false;
+    }
 }
 
 // 計算播放清單中「歌手${n}」的最高編號
@@ -133,15 +385,21 @@ function stopCurrentSong() {
     audioPlayer.currentTime = 0;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('=== 頁面加載開始 ===');
+    console.log('localStorage 中的鍵:', Object.keys(localStorage));
+    
     // 從 localStorage 加載排序方向
     sortDirection = loadSortDirectionFromStorage();
+    console.log('加載排序方向:', sortDirection);
     
     // 從 localStorage 加載播放清單
     let savedSongs = loadPlaylistFromStorage();
+    console.log('加載播放清單，共', savedSongs.length, '首歌曲');
     
     // 如果 localStorage 沒有資料，使用範例歌曲
     if (savedSongs.length === 0) {
+        console.log('使用範例歌曲');
         savedSongs = [
             { title: '歌曲1', artist: '歌手A', addedAt: Date.now() },
             { title: '歌曲2', artist: '歌手B', addedAt: Date.now() },
@@ -153,6 +411,11 @@ document.addEventListener('DOMContentLoaded', () => {
     savedSongs.forEach(song => {
         addSongToStructures(song);
     });
+    
+    // 從 localStorage 加載音訊檔案
+    console.log('開始加載音訊檔案...');
+    await loadAudioFilesFromStorage();
+    console.log('音訊檔案加載完成，共', Object.keys(audioFileMap).length, '個檔案');
     
     // 更新排序方向按鈕的箭頭圖示
     const sortDirectionBtn = document.getElementById('sort-direction-btn');
@@ -197,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // 新增歌曲按鈕事件 - O(1) hashtable insert + O(log n) BST insert
-    document.getElementById('add-song-btn').addEventListener('click', () => {
+    document.getElementById('add-song-btn').addEventListener('click', async () => {
         // 檢查是否選取檔案
         if (!selectedAudioFile) {
             alert('請新增檔案');
@@ -237,6 +500,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             updateButtonStates();
             
+            // 儲存到 localStorage（包含音訊檔案）
+            await savePlaylistAndAudioToStorage();
+            
             // 清空輸入欄位
             document.getElementById('song-name-input').value = '';
             document.getElementById('artist-name-input').value = '';
@@ -251,6 +517,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // 移除「刪除歌曲」按鈕事件，改為在歌曲項目上顯示垃圾桶 icon 來刪除
+    
+    // 音訊播放器結束事件 - 自動播放下一首
+    const audioPlayer = document.getElementById('audio-player');
+    audioPlayer.addEventListener('ended', () => {
+        if (!isPlaying) {
+            return;
+        }
+        
+        // 搜尋模式：在搜尋結果中切換到下一首
+        if (isSearchMode && searchResults.length > 0) {
+            navigateInSearchResults('next');
+        } else {
+            // 正常模式：在完整播放清單中切換到下一首
+            if (!playlistList.head) {
+                // 播放清單已空，停止播放
+                isPlaying = false;
+                currentNode = null;
+                const playButton = document.getElementById('play');
+                playButton.textContent = '播放';
+                playButton.classList.remove('playing');
+                updatePlaylistDisplay();
+                return;
+            }
+            
+            if (!currentNode) {
+                currentNode = playlistList.head;
+            } else {
+                currentNode = currentNode.next || playlistList.head; // 循環到第一首
+            }
+        }
+        
+        // 播放下一首歌曲
+        const playSuccess = playCurrentSong();
+        
+        if (playSuccess === false) {
+            // 播放失敗，停止播放
+            isPlaying = false;
+            currentNode = null;
+            const playButton = document.getElementById('play');
+            playButton.textContent = '播放';
+            playButton.classList.remove('playing');
+        }
+        
+        updatePlaylistDisplay();
+    });
     
     // 播放/停止按鈕 - O(1) 狀態切換
     document.getElementById('play').addEventListener('click', () => {
@@ -533,6 +844,14 @@ function updatePlaylistDisplay() {
         const li = document.createElement('li');
         li.style.cursor = 'pointer'; // 整個 li 可點擊
         
+        // 檢查音訊檔案是否存在
+        const fileKey = `${song.title}||${song.artist}`;
+        const hasAudio = audioFileMap[fileKey] !== undefined;
+        
+        if (!hasAudio) {
+            li.classList.add('missing-audio');
+        }
+        
         const label = document.createElement('span');
         label.textContent = `${index + 1}. ${song.title} - ${song.artist}`;
 
@@ -592,6 +911,14 @@ function renderList(list, currentSong) {
     list.forEach((song, index) => {
         const li = document.createElement('li');
         li.style.cursor = 'pointer'; // 整個 li 可點擊
+        
+        // 檢查音訊檔案是否存在
+        const fileKey = `${song.title}||${song.artist}`;
+        const hasAudio = audioFileMap[fileKey] !== undefined;
+        
+        if (!hasAudio) {
+            li.classList.add('missing-audio');
+        }
         
         const label = document.createElement('span');
         label.textContent = `${index + 1}. ${song.title} - ${song.artist}`;
@@ -681,7 +1008,7 @@ function addSongToStructures(song) {
 
 // 過濾 queue 的 items（簡單重建）- O(n) 重建 queue- O(n) 重建 queue
 // 事件委派：處理垃圾桶 icon 的點擊刪除
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
     const target = e.target;
     if (target && target.classList && target.classList.contains('song-delete')) {
         const title = target.dataset.title;
@@ -707,6 +1034,10 @@ document.addEventListener('click', (e) => {
             delete nodeTable[nodeKey];
             // 也刪除音訊檔案映射
             delete audioFileMap[nodeKey];
+            // 從 IndexedDB 中刪除檔案
+            await deleteFileFromIndexedDB(nodeKey).catch(err => {
+                console.warn(`從 IndexedDB 刪除檔案 ${nodeKey} 失敗:`, err);
+            });
             filterQueue(nextQueue, s => s.title !== title);
             filterQueue(prevQueue, s => s.title !== title);
             
@@ -723,8 +1054,8 @@ document.addEventListener('click', (e) => {
                 }
             }
             
-            // 保存到 localStorage
-            savePlaylistToStorage();
+            // 保存到 localStorage（包含音訊檔案）
+            await savePlaylistAndAudioToStorage();
             
             updatePlaylistDisplay();
             updateButtonStates();
@@ -993,7 +1324,7 @@ function closeEditModal() {
 }
 
 // 保存編輯
-function saveEdit() {
+async function saveEdit() {
     const newTitle = document.getElementById('edit-title-input').value.trim();
     const newArtist = document.getElementById('edit-artist-input').value.trim();
     
@@ -1038,8 +1369,8 @@ function saveEdit() {
             delete audioFileMap[oldKey];
         }
         
-        // 儲存到 localStorage
-        savePlaylistToStorage();
+        // 儲存到 localStorage（包含音訊檔案）
+        await savePlaylistAndAudioToStorage();
         
         // 重新顯示
         if (isSearchMode) {
