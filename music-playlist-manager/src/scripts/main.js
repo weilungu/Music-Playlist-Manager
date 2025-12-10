@@ -28,6 +28,7 @@ let isSearchMode = false; // 是否處於搜尋模式
 let searchResults = []; // 搜尋結果快取
 let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
 let selectedAudioFile = null; // 選取的音訊檔案
+let audioFileMap = {}; // 歌曲名稱+歌手 -> File 物件的映射
 
 // localStorage 相關常數
 const PLAYLIST_STORAGE_KEY = 'musicPlaylist';
@@ -96,6 +97,37 @@ function getMaxArtistNumber() {
     });
     
     return maxNumber;
+}
+
+// 播放當前歌曲
+function playCurrentSong() {
+    if (!currentNode || !currentNode.data) {
+        console.error('沒有要播放的歌曲');
+        return;
+    }
+    
+    const song = currentNode.data;
+    const fileKey = `${song.title}||${song.artist}`;
+    const file = audioFileMap[fileKey];
+    
+    if (!file) {
+        alert(`找不到歌曲「${song.title}」的音訊檔案`);
+        return;
+    }
+    
+    const audioPlayer = document.getElementById('audio-player');
+    const fileUrl = URL.createObjectURL(file);
+    audioPlayer.src = fileUrl;
+    audioPlayer.play().catch(err => {
+        console.error('播放音訊失敗:', err);
+    });
+}
+
+// 停止播放當前歌曲
+function stopCurrentSong() {
+    const audioPlayer = document.getElementById('audio-player');
+    audioPlayer.pause();
+    audioPlayer.currentTime = 0;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -185,6 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const song = { title: songName, artist: artistName };
             addSongToStructures(song);
+            // 記錄檔案映射
+            const fileKey = `${songName}||${artistName}`;
+            audioFileMap[fileKey] = selectedAudioFile;
             // 如果目前沒有播放節點，預設到第一首
             if (!currentNode) {
                 currentNode = playlistList.head;
@@ -242,12 +277,18 @@ document.addEventListener('DOMContentLoaded', () => {
             isPlaying = true;
             playButton.textContent = '停止';
             playButton.classList.add('playing');
+            
+            // 播放當前歌曲
+            playCurrentSong();
         } else {
             // 停止播放
             isPlaying = false;
             currentNode = null; // 停止時清除當前節點，下次從頭開始
             playButton.textContent = '播放';
             playButton.classList.remove('playing');
+            
+            // 停止音樂
+            stopCurrentSong();
         }
         
         updatePlaylistDisplay();
@@ -277,6 +318,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        // 播放上一首歌曲
+        playCurrentSong();
         updatePlaylistDisplay();
     });
     
@@ -304,6 +347,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        // 播放下一首歌曲
+        playCurrentSong();
         updatePlaylistDisplay();
     });
     
@@ -333,6 +378,8 @@ document.addEventListener('DOMContentLoaded', () => {
             playButton.classList.add('playing');
         }
         
+        // 播放隨機選擇的歌曲
+        playCurrentSong();
         updatePlaylistDisplay();
         updateButtonStates();
     });
@@ -603,6 +650,8 @@ document.addEventListener('click', (e) => {
             bst.delete(title);
             delete songTable[title];
             delete nodeTable[nodeKey];
+            // 也刪除音訊檔案映射
+            delete audioFileMap[nodeKey];
             filterQueue(nextQueue, s => s.title !== title);
             filterQueue(prevQueue, s => s.title !== title);
             
