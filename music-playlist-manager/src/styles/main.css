@@ -130,6 +130,13 @@ h2 {
     font-size: 14px;
 }
 
+.input-group input:disabled {
+    background-color: #f0f0f0;
+    color: #999;
+    cursor: not-allowed;
+    border-color: #ddd;
+}
+
 .input-group button {
     padding: 10px 20px;
     background: #35424a;

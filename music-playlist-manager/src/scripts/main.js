@@ -452,10 +452,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 自動填入歌手名稱（根據播放清單中現有的最高編號）
             const maxNumber = getMaxArtistNumber();
             document.getElementById('artist-name-input').value = `歌手${maxNumber + 1}`;
+            
+            // 啟用輸入框
+            document.getElementById('song-name-input').disabled = false;
+            document.getElementById('artist-name-input').disabled = false;
         } else {
             selectedAudioFile = null;
             document.getElementById('selected-file-name').textContent = '';
             document.getElementById('selected-file-name').style.display = 'none';
+            
+            // 禁用輸入框
+            document.getElementById('song-name-input').disabled = true;
+            document.getElementById('artist-name-input').disabled = true;
         }
     });
     
@@ -506,6 +514,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 清空輸入欄位
             document.getElementById('song-name-input').value = '';
             document.getElementById('artist-name-input').value = '';
+            // 禁用輸入框（直到選取新檔案）
+            document.getElementById('song-name-input').disabled = true;
+            document.getElementById('artist-name-input').disabled = true;
             // 清空選取的檔案
             selectedAudioFile = null;
             document.getElementById('audio-file-input').value = '';
