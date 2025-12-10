@@ -103,7 +103,7 @@ function getMaxArtistNumber() {
 function playCurrentSong() {
     if (!currentNode || !currentNode.data) {
         console.error('沒有要播放的歌曲');
-        return;
+        return false;
     }
     
     const song = currentNode.data;
@@ -112,7 +112,7 @@ function playCurrentSong() {
     
     if (!file) {
         alert(`找不到歌曲「${song.title}」的音訊檔案`);
-        return;
+        return false;
     }
     
     const audioPlayer = document.getElementById('audio-player');
@@ -120,7 +120,10 @@ function playCurrentSong() {
     audioPlayer.src = fileUrl;
     audioPlayer.play().catch(err => {
         console.error('播放音訊失敗:', err);
+        return false;
     });
+    
+    return true;
 }
 
 // 停止播放當前歌曲
@@ -274,12 +277,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentNode = playlistList.head;
             }
             
-            isPlaying = true;
-            playButton.textContent = '停止';
-            playButton.classList.add('playing');
-            
             // 播放當前歌曲
-            playCurrentSong();
+            const playSuccess = playCurrentSong();
+            
+            if (playSuccess !== false) {
+                isPlaying = true;
+                playButton.textContent = '停止';
+                playButton.classList.add('playing');
+            } else {
+                // 播放失敗，重置狀態
+                isPlaying = false;
+                currentNode = null;
+            }
         } else {
             // 停止播放
             isPlaying = false;
@@ -319,7 +328,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // 播放上一首歌曲
-        playCurrentSong();
+        const playSuccess = playCurrentSong();
+        
+        if (playSuccess === false) {
+            // 播放失敗，停止播放
+            isPlaying = false;
+            currentNode = null;
+            const playButton = document.getElementById('play');
+            playButton.textContent = '播放';
+            playButton.classList.remove('playing');
+        }
+        
         updatePlaylistDisplay();
     });
     
@@ -348,7 +367,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // 播放下一首歌曲
-        playCurrentSong();
+        const playSuccess = playCurrentSong();
+        
+        if (playSuccess === false) {
+            // 播放失敗，停止播放
+            isPlaying = false;
+            currentNode = null;
+            const playButton = document.getElementById('play');
+            playButton.textContent = '播放';
+            playButton.classList.remove('playing');
+        }
+        
         updatePlaylistDisplay();
     });
     
@@ -371,15 +400,25 @@ document.addEventListener('DOMContentLoaded', () => {
             currentNode = randomNode;
         }
         
-        if (!isPlaying) {
-            isPlaying = true;
+        // 播放隨機選擇的歌曲
+        const playSuccess = playCurrentSong();
+        
+        if (playSuccess !== false) {
+            if (!isPlaying) {
+                isPlaying = true;
+                const playButton = document.getElementById('play');
+                playButton.textContent = '停止';
+                playButton.classList.add('playing');
+            }
+        } else {
+            // 播放失敗，停止播放
+            isPlaying = false;
+            currentNode = null;
             const playButton = document.getElementById('play');
-            playButton.textContent = '停止';
-            playButton.classList.add('playing');
+            playButton.textContent = '播放';
+            playButton.classList.remove('playing');
         }
         
-        // 播放隨機選擇的歌曲
-        playCurrentSong();
         updatePlaylistDisplay();
         updateButtonStates();
     });
@@ -506,23 +545,31 @@ function updatePlaylistDisplay() {
         const isSelected = selectedNode && selectedNode.data && selectedNode.data.title === song.title && selectedNode.data.artist === song.artist;
         if (isSelected) {
             li.classList.add('selected');
-            
-            // 只有選取時才顯示垃圾桶 icon
-            const trash = document.createElement('i');
-            trash.className = 'fa-solid fa-trash song-delete';
-            trash.title = '刪除';
-            trash.dataset.title = song.title;
-            trash.dataset.artist = song.artist;
-            li.appendChild(label);
-            li.appendChild(trash);
-        } else {
-            li.appendChild(label);
         }
+        
+        // 添加 label
+        li.appendChild(label);
+        
+        // 始終添加鉛筆 icon（通過 CSS 控制顯示）
+        const edit = document.createElement('i');
+        edit.className = 'fa-solid fa-pen song-edit';
+        edit.title = '編輯';
+        edit.dataset.title = song.title;
+        edit.dataset.artist = song.artist;
+        li.appendChild(edit);
+        
+        // 始終添加垃圾桶 icon（通過 CSS 控制顯示）
+        const trash = document.createElement('i');
+        trash.className = 'fa-solid fa-trash song-delete';
+        trash.title = '刪除';
+        trash.dataset.title = song.title;
+        trash.dataset.artist = song.artist;
+        li.appendChild(trash);
         
         // 點擊整個 li 選取/取消選取歌曲
         li.addEventListener('click', (e) => {
-            // 如果點擊的是垃圾桶圖示，不觸發選取
-            if (e.target.classList.contains('song-delete')) {
+            // 如果點擊的是垃圾桶或鉛筆圖示，不觸發選取
+            if (e.target.classList.contains('song-delete') || e.target.classList.contains('song-edit')) {
                 return;
             }
             e.stopPropagation(); // 阻止事件冒泡到 document
@@ -557,23 +604,31 @@ function renderList(list, currentSong) {
         const isSelected = selectedNode && selectedNode.data && selectedNode.data.title === song.title && selectedNode.data.artist === song.artist;
         if (isSelected) {
             li.classList.add('selected');
-            
-            // 只有選取時才顯示垃圾桶 icon
-            const trash = document.createElement('i');
-            trash.className = 'fa-solid fa-trash song-delete';
-            trash.title = '刪除';
-            trash.dataset.title = song.title;
-            trash.dataset.artist = song.artist;
-            li.appendChild(label);
-            li.appendChild(trash);
-        } else {
-            li.appendChild(label);
         }
+        
+        // 添加 label
+        li.appendChild(label);
+        
+        // 始終添加鉛筆 icon（通過 CSS 控制顯示）
+        const edit = document.createElement('i');
+        edit.className = 'fa-solid fa-pen song-edit';
+        edit.title = '編輯';
+        edit.dataset.title = song.title;
+        edit.dataset.artist = song.artist;
+        li.appendChild(edit);
+        
+        // 始終添加垃圾桶 icon（通過 CSS 控制顯示）
+        const trash = document.createElement('i');
+        trash.className = 'fa-solid fa-trash song-delete';
+        trash.title = '刪除';
+        trash.dataset.title = song.title;
+        trash.dataset.artist = song.artist;
+        li.appendChild(trash);
         
         // 點擊整個 li 選取/取消選取歌曲
         li.addEventListener('click', (e) => {
-            // 如果點擊的是垃圾桶圖示，不觸發選取
-            if (e.target.classList.contains('song-delete')) {
+            // 如果點擊的是垃圾桶或鉛筆圖示，不觸發選取
+            if (e.target.classList.contains('song-delete') || e.target.classList.contains('song-edit')) {
                 return;
             }
             e.stopPropagation(); // 阻止事件冒泡到 document
@@ -714,6 +769,26 @@ document.addEventListener('DOMContentLoaded', () => {
             renderSortedBySelection();
         });
     }
+    
+    // 處理編輯 icon 點擊
+    document.getElementById('song-list').addEventListener('click', (e) => {
+        if (e.target.classList.contains('song-edit')) {
+            const title = e.target.dataset.title;
+            const artist = e.target.dataset.artist;
+            openEditModal(title, artist);
+        }
+    });
+    
+    // 處理 modal 關閉
+    document.getElementById('cancel-edit-btn').addEventListener('click', closeEditModal);
+    document.getElementById('edit-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'edit-modal') {
+            closeEditModal();
+        }
+    });
+    
+    // 處理編輯保存
+    document.getElementById('save-edit-btn').addEventListener('click', saveEdit);
 });
 
 // 重新依指定欄位與方向重建底層串列順序
@@ -839,7 +914,7 @@ function performSearch(searchTerm) {
     
     if (results.length > 0) {
         playlistTitle.textContent = `搜尋結果 (${results.length})`;
-        backButton.style.display = 'inline-blo  ck';
+        backButton.style.display = 'inline-block';
         renderList(results, currentNode ? currentNode.data : null);
     } else {
         playlistTitle.textContent = '搜尋結果 (0)';
@@ -895,4 +970,84 @@ function backToPlaylist() {
     
     // 重新顯示播放清單
     updatePlaylistDisplay();
+}
+
+// 打開編輯 modal
+let editingOriginalTitle = '';
+let editingOriginalArtist = '';
+
+function openEditModal(title, artist) {
+    editingOriginalTitle = title;
+    editingOriginalArtist = artist;
+    
+    document.getElementById('edit-title-input').value = title;
+    document.getElementById('edit-artist-input').value = artist;
+    document.getElementById('edit-modal').style.display = 'flex';
+}
+
+// 關閉編輯 modal
+function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+    editingOriginalTitle = '';
+    editingOriginalArtist = '';
+}
+
+// 保存編輯
+function saveEdit() {
+    const newTitle = document.getElementById('edit-title-input').value.trim();
+    const newArtist = document.getElementById('edit-artist-input').value.trim();
+    
+    if (!newTitle || !newArtist) {
+        alert('歌曲名稱與歌手不可為空');
+        return;
+    }
+    
+    const oldKey = `${editingOriginalTitle}||${editingOriginalArtist}`;
+    const newKey = `${newTitle}||${newArtist}`;
+    
+    // 檢查是否修改
+    if (oldKey === newKey) {
+        closeEditModal();
+        return;
+    }
+    
+    // 檢查新名稱是否已存在
+    if (nodeTable[newKey]) {
+        alert(`歌曲「${newTitle} - ${newArtist}」已存在於播放清單中`);
+        return;
+    }
+    
+    // 更新資料結構
+    const node = nodeTable[oldKey];
+    if (node) {
+        // 更新節點資料
+        node.data.title = newTitle;
+        node.data.artist = newArtist;
+        
+        // 更新 nodeTable
+        delete nodeTable[oldKey];
+        nodeTable[newKey] = node;
+        
+        // 更新 songTable
+        delete songTable[editingOriginalTitle];
+        songTable[newTitle] = node.data;
+        
+        // 更新 audioFileMap
+        if (audioFileMap[oldKey]) {
+            audioFileMap[newKey] = audioFileMap[oldKey];
+            delete audioFileMap[oldKey];
+        }
+        
+        // 儲存到 localStorage
+        savePlaylistToStorage();
+        
+        // 重新顯示
+        if (isSearchMode) {
+            performSearch(document.getElementById('search-input').value);
+        } else {
+            updatePlaylistDisplay();
+        }
+    }
+    
+    closeEditModal();
 }
