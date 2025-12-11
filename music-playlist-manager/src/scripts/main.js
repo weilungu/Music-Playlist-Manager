@@ -12,10 +12,10 @@ const playlistList = new DoublyLinkedList();
 const nextQueue = new Queue();
 const prevQueue = new Queue();
 
-// 取名與歌手查詢：hashtable（使用內建 object）- O(1) lookup
+// 歌曲查詢表：hashtable（使用 songKey 作為鍵）- O(1) lookup
 const songTable = {};
 
-// 新增：節點快速查找表 - O(1) lookup by song title
+// 節點快速查找表 - O(1) lookup by songKey
 const nodeTable = {};
 
 // 排序歌曲：Binary Search Tree（依 title 排序）- O(log n) insert, O(n) traversal
@@ -1093,23 +1093,22 @@ function addSongToStructures(song) {
         song.addedAt = Date.now();
     }
     const node = playlistList.add(song);        // O(1) 加到尾端
-    songTable[song.title] = song;               // O(1) hashtable 存歌曲
     const key = songKeyFromSong(song);
+    songTable[key] = song;                      // O(1) hashtable 存歌曲
     nodeTable[key] = node;                      // O(1) 存節點引用
     bst.insert(song);                           // O(log n) BST 插入
     updateMaxArtistNumberCache(song.artist);    // O(1) 更新歌手編號快取
     savePlaylistToStorage();
 }
 
-// 過濾 queue 的 items（簡單重建）- O(n) 重建 queue- O(n) 重建 queue
 // 事件委派：處理垃圾桶 icon 的點擊刪除
 document.addEventListener('click', async (e) => {
     const target = e.target;
     if (target && target.classList && target.classList.contains('song-delete')) {
         const title = target.dataset.title;
         const artist = target.dataset.artist;
-        const song = songTable[title];
         const nodeKey = songKey(title, artist);
+        const song = songTable[nodeKey];
         const node = nodeTable[nodeKey];
         if (song && node) {
             // 調整當前播放節點
@@ -1125,7 +1124,7 @@ document.addEventListener('click', async (e) => {
             // 從資料結構中刪除
             playlistList.removeNode(node);
             bst.delete(title);
-            delete songTable[title];
+            delete songTable[nodeKey];
             delete nodeTable[nodeKey];
             // 也刪除音訊檔案映射
             delete audioFileMap[nodeKey];
@@ -1133,8 +1132,8 @@ document.addEventListener('click', async (e) => {
             await deleteFileFromIndexedDB(nodeKey).catch(err => {
                 console.warn(`從 IndexedDB 刪除檔案 ${nodeKey} 失敗:`, err);
             });
-            filterQueue(nextQueue, s => s.title !== title);
-            filterQueue(prevQueue, s => s.title !== title);
+            filterQueue(nextQueue, s => songKeyFromSong(s) !== nodeKey);
+            filterQueue(prevQueue, s => songKeyFromSong(s) !== nodeKey);
             
             // 如果處於搜尋模式，也要從搜尋結果中移除
             if (isSearchMode && searchResults.length > 0) {
@@ -1304,37 +1303,32 @@ function sortSearchResults(field, direction) {
     renderList(searchResults, currentNode ? currentNode.data : null);
 }
 
-// 執行搜尋 - O(1) + O(n)
+// 執行搜尋 - O(n) 模糊搜尋
 function performSearch(searchTerm) {
-    // O(1) 使用 hashtable 依歌曲名查找
-    const byTitle = songTable[searchTerm];
-    
     // O(n) 模糊搜尋：歌曲名或歌手名包含搜尋詞
     const allSongs = Object.values(songTable);
-    const fuzzyResults = allSongs.filter(s => 
-        s.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        s.artist.toLowerCase().includes(searchTerm.toLowerCase())
+    const lowerTerm = searchTerm.toLowerCase();
+    
+    const results = allSongs.filter(s => 
+        s.title.toLowerCase().includes(lowerTerm) || 
+        s.artist.toLowerCase().includes(lowerTerm)
     );
     
-    // 去重（精確匹配優先）
-    const results = [];
-    const addedTitles = new Set();
+    // 使用 songKey 去重（避免同一首歌重複出現）
+    const uniqueResults = [];
+    const addedKeys = new Set();
     
-    if (byTitle) {
-        results.push(byTitle);
-        addedTitles.add(byTitle.title);
-    }
-    
-    fuzzyResults.forEach(song => {
-        if (!addedTitles.has(song.title)) {
-            results.push(song);
-            addedTitles.add(song.title);
+    results.forEach(song => {
+        const key = songKeyFromSong(song);
+        if (!addedKeys.has(key)) {
+            uniqueResults.push(song);
+            addedKeys.add(key);
         }
     });
     
     // 切換到搜尋模式並顯示結果
     isSearchMode = true;
-    searchResults = results;
+    searchResults = uniqueResults;
     rebuildSearchIndexMap(); // O(n) 建立索引表，供導航時 O(1) 查找
     
     // 更新標題與按鈕顯示
@@ -1461,9 +1455,9 @@ async function saveEdit() {
         delete nodeTable[oldKey];
         nodeTable[newKey] = node;
         
-        // 更新 songTable
-        delete songTable[editingOriginalTitle];
-        songTable[newTitle] = node.data;
+        // 更新 songTable（使用 songKey 作為鍵）
+        delete songTable[oldKey];
+        songTable[newKey] = node.data;
         
         // 更新 audioFileMap
         if (audioFileMap[oldKey]) {
