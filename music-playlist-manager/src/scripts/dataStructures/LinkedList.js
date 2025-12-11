@@ -1,3 +1,6 @@
+/**
+ * Node - 雙向連結串列節點
+ */
 class Node {
     constructor(data) {
         this.data = data;
@@ -6,6 +9,18 @@ class Node {
     }
 }
 
+/**
+ * DoublyLinkedList - 雙向連結串列
+ * 
+ * 時間複雜度：
+ *   add/append: O(1) - 加到尾端
+ *   removeNode: O(1) - 已知節點引用
+ *   remove: O(n) - 需搜尋節點
+ *   traverse/toArray: O(n)
+ *   shuffle: O(n) - 隨機選取
+ *   moveNext/movePrev: O(1) - 指標移動
+ *   clear: O(1)
+ */
 class DoublyLinkedList {
     constructor() {
         this.head = null;
@@ -13,8 +28,9 @@ class DoublyLinkedList {
         this.size = 0;
     }
 
-    // ---基本操作---
+    // ========== 基本操作 ==========
 
+    /** 新增節點到尾端 - O(1) */
     add(data) {
         const newNode = new Node(data);
         if (!this.head) {
@@ -26,15 +42,15 @@ class DoublyLinkedList {
             this.tail = newNode;
         }
         this.size++;
-        return newNode; // 回傳節點方便外部引用
+        return newNode;
     }
 
-    // append 為 add 的別名，供 fromArray 使用
+    /** add 的別名 - O(1) */
     append(data) {
         return this.add(data);
     }
 
-    // 清空串列
+    /** 清空串列 - O(1) */
     clear() {
         this.head = null;
         this.tail = null;
@@ -42,6 +58,7 @@ class DoublyLinkedList {
         this.current = null;
     }
 
+    /** 依資料搜尋並移除節點 - O(n) */
     remove(data) {
         if (!this.head) return;
 
@@ -80,6 +97,7 @@ class DoublyLinkedList {
         }
     }
 
+    /** 依節點引用直接移除 - O(1) */
     removeNode(node) {
         // 如果有節點引用，刪除是 O(1)
         if (node.prev) {
@@ -100,8 +118,9 @@ class DoublyLinkedList {
         }
         
         this.size--;
-}
+    }
 
+    /** 遍歷所有節點 - O(n) */
     traverse() {
         const elements = [];
         let current = this.head;
@@ -112,6 +131,7 @@ class DoublyLinkedList {
         return elements;
     }
 
+    /** 反向遍歷 - O(n) */
     traverseReverse() {
         const elements = [];
         let current = this.tail;
@@ -122,10 +142,12 @@ class DoublyLinkedList {
         return elements;
     }
 
+    /** 取得串列長度 - O(1) */
     getSize() {
         return this.size;
     }
-    
+
+    /** 隨機取得一個節點 - O(n) */
     shuffle() {
         if (!this.head) return null;
         const nodes = [];
@@ -138,27 +160,31 @@ class DoublyLinkedList {
         return nodes[randomIndex];
     }
 
-    // ---播放相關操作---
+    // ========== 播放相關操作 ==========
+
+    /** 移到下一首（循環）- O(1) */
     moveNext() {
         if (!this.current) {
             this.current = this.head;
         } else {
-            this.current = this.current.next || this.head; // 循環播放
+            this.current = this.current.next || this.head;
         }
         return this.current ? this.current.data : null;
     }
 
+    /** 移到上一首（循環）- O(1) */
     movePrev() {
         if (!this.current) {
             this.current = this.tail;
         } else {
-            this.current = this.current.prev || this.tail; // 循環播放
+            this.current = this.current.prev || this.tail;
         }
         return this.current ? this.current.data : null;
     }
 
-    // ---轉換成 Array---
+    // ========== 轉換方法 ==========
 
+    /** 轉換為陣列 - O(n) */
     toArray() {
         const arr = [];
         let current = this.head;
@@ -169,6 +195,7 @@ class DoublyLinkedList {
         return arr;
     }
 
+    /** 從陣列重建串列 - O(n) */
     fromArray(arr) {
         this.clear();
         arr.forEach(data => this.append(data));
