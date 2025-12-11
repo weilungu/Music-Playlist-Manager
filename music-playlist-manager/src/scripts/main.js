@@ -29,6 +29,7 @@ let searchResults = []; // 搜尋結果快取
 let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
 let selectedAudioFile = null; // 選取的音訊檔案
 let audioFileMap = {}; // 歌曲名稱+歌手 -> File 物件的映射
+let isRandomMode = false; // 是否處於隨機播放模式
 
 // localStorage 相關常數
 const PLAYLIST_STORAGE_KEY = 'musicPlaylist';
@@ -536,26 +537,78 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        // 搜尋模式：在搜尋結果中切換到下一首
-        if (isSearchMode && searchResults.length > 0) {
-            navigateInSearchResults('next');
-        } else {
-            // 正常模式：在完整播放清單中切換到下一首
-            if (!playlistList.head) {
-                // 播放清單已空，停止播放
-                isPlaying = false;
-                currentNode = null;
-                const playButton = document.getElementById('play');
-                playButton.textContent = '播放';
-                playButton.classList.remove('playing');
-                updatePlaylistDisplay();
-                return;
-            }
-            
-            if (!currentNode) {
-                currentNode = playlistList.head;
+        // 隨機播放模式：隨機選擇下一首（排除當前歌曲）
+        if (isRandomMode) {
+            if (isSearchMode && searchResults.length > 0) {
+                // 在搜尋結果中隨機選擇（排除當前歌曲）
+                let availableSongs = searchResults.filter(s => 
+                    !(s.title === currentNode.data.title && s.artist === currentNode.data.artist)
+                );
+                
+                if (availableSongs.length === 0) {
+                    // 只有一首歌曲，循環播放同一首
+                    availableSongs = searchResults;
+                }
+                
+                const randomIndex = Math.floor(Math.random() * availableSongs.length);
+                const randomSong = availableSongs[randomIndex];
+                const nodeKey = `${randomSong.title}||${randomSong.artist}`;
+                currentNode = nodeTable[nodeKey];
             } else {
-                currentNode = currentNode.next || playlistList.head; // 循環到第一首
+                // 在完整播放清單中隨機選擇（排除當前歌曲）
+                if (!playlistList.head) {
+                    // 播放清單已空，停止播放
+                    isPlaying = false;
+                    isRandomMode = false;
+                    currentNode = null;
+                    const playButton = document.getElementById('play');
+                    playButton.textContent = '播放';
+                    playButton.classList.remove('playing');
+                    updatePlaylistDisplay();
+                    return;
+                }
+                
+                const allSongs = playlistList.toArray();
+                const currentSongKey = currentNode ? `${currentNode.data.title}||${currentNode.data.artist}` : null;
+                
+                // 過濾出除了當前歌曲外的所有歌曲
+                const availableSongs = allSongs.filter(s => 
+                    `${s.title}||${s.artist}` !== currentSongKey
+                );
+                
+                if (availableSongs.length === 0) {
+                    // 只有一首歌曲，循環播放同一首
+                    currentNode = playlistList.shuffle();
+                } else {
+                    // 隨機選擇一首不同的歌曲
+                    const randomIndex = Math.floor(Math.random() * availableSongs.length);
+                    const randomSong = availableSongs[randomIndex];
+                    const nodeKey = `${randomSong.title}||${randomSong.artist}`;
+                    currentNode = nodeTable[nodeKey];
+                }
+            }
+        } else {
+            // 搜尋模式：在搜尋結果中切換到下一首
+            if (isSearchMode && searchResults.length > 0) {
+                navigateInSearchResults('next');
+            } else {
+                // 正常模式：在完整播放清單中切換到下一首
+                if (!playlistList.head) {
+                    // 播放清單已空，停止播放
+                    isPlaying = false;
+                    currentNode = null;
+                    const playButton = document.getElementById('play');
+                    playButton.textContent = '播放';
+                    playButton.classList.remove('playing');
+                    updatePlaylistDisplay();
+                    return;
+                }
+                
+                if (!currentNode) {
+                    currentNode = playlistList.head;
+                } else {
+                    currentNode = currentNode.next || playlistList.head; // 循環到第一首
+                }
             }
         }
         
@@ -565,6 +618,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (playSuccess === false) {
             // 播放失敗，停止播放
             isPlaying = false;
+            isRandomMode = false;
             currentNode = null;
             const playButton = document.getElementById('play');
             playButton.textContent = '播放';
@@ -614,6 +668,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             // 停止播放
             isPlaying = false;
+            isRandomMode = false; // 停止播放時也重置隨機模式
             currentNode = null; // 停止時清除當前節點，下次從頭開始
             playButton.textContent = '播放';
             playButton.classList.remove('playing');
@@ -631,6 +686,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!isPlaying) {
             return;
         }
+        
+        // 退出隨機播放模式
+        isRandomMode = false;
         
         // 搜尋模式：在搜尋結果中切換
         if (isSearchMode && searchResults.length > 0) {
@@ -670,6 +728,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!isPlaying) {
             return;
         }
+        
+        // 退出隨機播放模式
+        isRandomMode = false;
         
         // 搜尋模式：在搜尋結果中切換
         if (isSearchMode && searchResults.length > 0) {
@@ -722,6 +783,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentNode = randomNode;
         }
         
+        // 設置隨機播放模式
+        isRandomMode = true;
+        
         // 播放隨機選擇的歌曲
         const playSuccess = playCurrentSong();
         
@@ -735,6 +799,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             // 播放失敗，停止播放
             isPlaying = false;
+            isRandomMode = false;
             currentNode = null;
             const playButton = document.getElementById('play');
             playButton.textContent = '播放';

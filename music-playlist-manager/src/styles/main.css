@@ -367,6 +367,12 @@ h2 {
     font-weight: bold;
 }
 
+/* 正在播放的歌曲不顯示編輯和移除 icon */
+#song-list li.now-playing .song-edit,
+#song-list li.now-playing .song-delete {
+    display: none;
+}
+
 #song-list li.selected {
     background: #3498db;
     color: white;
